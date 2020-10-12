@@ -109,11 +109,13 @@ contract Organism {
 
     function createPurpose(
         uint256 _sustainability,
+        address _want,
         uint256 _duration,
-        address _want
+        uint256 purpose _start,
     ) public {
         require(!currentPurposes[msg.sender].exists, "You already have a purpose.")
         Purpose storage purpose = currentPurposes[msg.sender];
+        purpose.start = _start;
         purpose.id = numPurposes;
         purpose.sustainability = _sustainability;
         purpose.duration = _duration;
@@ -225,10 +227,14 @@ contract Organism {
         }
 
         // Save the amount to distribute before changing the state.
-        uint256 amountToDistribute = _purpose.sustainment <=
+        uint256 surplus = _purpose.sustainment <=
             _purpose.sustainability
             ? 0
             : _purpose.sustainment.sub(_purpose.sustainability);
+
+        // //TODO market buy native token.
+        // uint amountToDistribute = _amount.sub(calculateFee(_amount, 1000); 
+
         // Redistribute any leftover amount.
         if (amountToDistribute > 0) {
             redistribute(_purpose, amountToDistribute);
@@ -262,6 +268,11 @@ contract Organism {
 
         // Return the steward's next Purpose.
         return nextPurposes[_steward];
+    }
+
+    function calculateFee(uint256 _amount, uint8 basisPoints) internal returns(uint256) {
+      require((amount / 10000) * 10000 == _amount, "Amount too small");
+      return amount * basisPoints / 1000;
     }
 
     // Proportionally allocate the specified amount to the contributors of the specified Purpose,
