@@ -3,15 +3,17 @@ pragma solidity >=0.4.25 <0.7.0;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
-// The Sustainers contract specifies the workings of a system made up of Purposes and their stewards, constrained only by time.
+// The Organism contract specifies the metaphysical workings of a system made up of Purposes and their stewards, constrained only by time.
 // Each Purpose has a predefined sustainability that can be contributed to by any sustainer, after which the surplus get's redistributed proportionally to sustainers.
-contract Sustainers {
+contract Organism {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
     // The Purpose structure represents a purpose envisioned by a steward, and accounts for who has contributed to the vision.
     struct Purpose {
-        // The address which is stewarding this purpose.
+        // A unique ID for this purpose.
+        uint id;
+        // The address which is stewarding this purpose and which has access to its funds.
         address steward;
         // The token that this Purpose can be funded with.
         address want;
@@ -35,8 +37,7 @@ contract Sustainers {
         bool exists;
     }
 
-    // The past Purposes, which are entirely immutable.
-    mapping(address => Purpose[]) pastPurposes;
+    enum Pools { REDISTRIBUTION, FUND }
 
     // The current Purposes, which are immutable once the Purpose receives some sustainment.
     mapping(address => Purpose) currentPurposes;
@@ -50,10 +51,38 @@ contract Sustainers {
     // The funds that have accumulated to sustain each steward's Purposes.
     mapping(address => uint256) funds;
 
-    address public DAI;
+    unit256 numPurposes;
+
+    IERC20 public DAI;
+
+    event PurposeCreated(
+        uint indexed id,
+        address indexed by,
+        uint256 sustainability,
+        uint256 duration,
+        address want 
+    );
+
+    event PurposeSustained(
+        uint256 indexed id,
+        address indexed sustainer,
+        uint256 amount,
+    );
+
+    event Withdrawl(
+        address indexed by,
+        Pool indexed from, 
+        uint256 amount,
+    );
+
+    event PurposeBecameSustainable(
+        uint256 indexed id,
+        uint256 indexed steward,
+    );
 
     constructor() public {
-        DAI = address(0x6B175474E89094C44Da98b954EedeAC495271d0F);
+        DAI = IERC20(address(0x6B175474E89094C44Da98b954EedeAC495271d0F));
+        numPurposes = 0;
     }
 
     function updateSustainability(uint256 _sustainability) public {
@@ -64,6 +93,34 @@ contract Sustainers {
     function updateDuration(uint256 _duration) public {
         Purpose storage purpose = purposeToUpdate(msg.sender);
         purpose.duration = _duration;
+    }
+
+    function updatePurpose(
+        uint256 _sustainability,
+        uint256 _duration,
+        address _want
+    ) public {
+        Purpose storage purpose = purposeToUpdate(msg.sender);
+        purpose.sustainability = _sustainability;
+        purpose.duration = _duration;
+        purpose.want = _want;
+    }
+
+    function createPurpose(
+        uint256 _sustainability,
+        uint256 _duration,
+        address _want
+    ) public {
+        require(!currentPurposes[msg.sender].exists, "You already have a purpose.")
+        Purpose storage purpose = currentPurposes[msg.sender];
+        purpose.id = numPurposes;
+        purpose.sustainability = _sustainability;
+        purpose.duration = _duration;
+        purpose.want = _want;
+
+        emit PurposeCreated(numPurposes, msg.sender, _sustainability, _duration, _want) 
+
+        numPurposes.add(1);
     }
 
     // Contribute a specified amount to the sustainability of the specified Steward's active Purpose.
@@ -88,14 +145,13 @@ contract Sustainers {
             "You don't have enough to withdrawl this much."
         );
 
-        //TODO: transfer to msg.sender wallet;
-        bool success = IERC20(dai).transferFrom(
-            address(this),
-            msg.sender,
-            _amount
+        require(
+            DAI.transferFrom(address(this), msg.sender, _amount),
+            "Transfer failed."
         );
-        require(success, "Transfer failed.");
-        redistribution[msg.sender] -= _amount;
+        redistribution[msg.sender] = redistribution[msg.sender].sub(_amount);
+
+        emit Withdrawl(msg.sender, Pool.REDISTRIBUTION, _amount);
     }
 
     // A message sender can withdrawl funds that have been used to sustain it's Purposes.
@@ -105,14 +161,13 @@ contract Sustainers {
             "You don't have enough to withdrawl this much."
         );
 
-        bool success = IERC20(dai).transferFrom(
-            address(this),
-            msg.sender,
-            _amount
+        require(
+            DAI.transferFrom(address(this), msg.sender, _amount),
+            "Transfer failed."
         );
+        funds[msg.sender] = funds[msg.sender].sub(_amount);
 
-        require(success, "Transfer failed.");
-        funds[msg.sender] -= _amount;
+        emit Withdrawl(msg.sender, Pool.FUND, _amount);
     }
 
     // Contribute a specified amount to the sustainability of a Purpose stewarded by the specified address.
@@ -129,35 +184,40 @@ contract Sustainers {
                 nextPurpose.exists,
                 "This account isn't currently stewarding a purpose."
             );
-            pastPurposes[_steward].push(_purpose);
             currentPurposes[_steward] = nextPurposes[_steward];
             sustainPurpose(_purpose, _steward, _amount);
             return;
         }
 
         // The amount that should be reserved for the steward to withdrawl.
-        unit amountToSendToSteward = _purpose.sustainability -
-            _purpose.sustainment >
-            _amount
+        unit amountToSendToSteward = _purpose.sustainability.sub(
+            _purpose.sustainment
+        ) > _amount
             ? _amount
-            : _purpose.sustainability - _purpose.sustainment;
+            : _purpose.sustainability.sub(_purpose.sustainment);
 
         // Save if the message sender is contributing to this Purpose for the first time.
         bool isNewSustainer = _purpose.sustainments[msg.sender] == 0;
+        // Save if the purpose is sustainable before operating on its state.
+        bool isSustainable = _purpose.sustainments >= _purpose.sustanainability;
 
-        bool success = daiInstance.transferFrom(
-            msg.sender,
-            address(this),
-            amountToSendToSteward
+        require(
+            daiInstance.transferFrom(
+                msg.sender,
+                address(this),
+                amountToSendToSteward
+            ),
+            "Transfer failed."
         );
-        require(success, "Transfer failed.");
 
-        funds[_steward] += amountToSendToSteward;
+        // Increment the funds that the steward has access to withdrawl.
+        funds[_steward] = funds[_steward].add(amountToSendToSteward);
 
         // Increment the sustainments to the Purpose made by the message sender.
-        _purpose.sustainments[msg.sender] += _amount;
+        _purpose.sustainments[msg.sender] = _purpose.sustainments[msg.sender]
+            .add(_amount);
         // Increment the total amount contributed to the sustainment of the Purpose.
-        _purpose.sustainment += _amount;
+        _purpose.sustainment = _purpose.sustainment.add(_amount);
         // Add the message sender as a sustainer of the Purpose if this is the first sustainment it's making to it.
         if (isNewSustainer) {
             _purpose.sustainers.push(msg.sender);
@@ -167,10 +227,16 @@ contract Sustainers {
         uint256 amountToDistribute = _purpose.sustainment <=
             _purpose.sustainability
             ? 0
-            : _purpose.sustainment - _purpose.sustainability;
+            : _purpose.sustainment.sub(_purpose.sustainability);
         // Redistribute any leftover amount.
         if (amountToDistribute > 0) {
             redistribute(_purpose, amountToDistribute);
+        }
+
+        // Emit events.
+        emit PurposeSustained(_purpose.id, msg.sender, _amount)
+        if (!isSustainable && _purpose.sustainments >= _purpose.sustanainability) {
+          emit PurposeBecameSustainable(_purpose.id, _purpose.steward)
         }
     }
 
@@ -179,12 +245,7 @@ contract Sustainers {
         private
         returns (Purpose storage)
     {
-        // If the steward does not have a current Purpose in the current Chapter, make one and return it.
-        if (!currentPurposes[_steward].exists) {
-            Purpose storage purpose = currentPurposes[_steward];
-            purpose.exists = true;
-            return purpose;
-        }
+        require(currentPurposes[_address].exists, "You don't yet have a purpose.")
 
         // If the steward's current Purpose does not yet have sustainments, return it.
         if (currentPurposes[_steward].sustainment == 0) {
@@ -211,9 +272,11 @@ contract Sustainers {
         // For each sustainer, calculate their share of the sustainment and allocate a proportional share of the amount.
         for (uint256 i = 0; i < purpose.sustainers.length; i++) {
             address sustainer = purpose.sustainers[i];
-            uint256 amountShare = (purpose.sustainments[sustainer] * amount) /
-                purpose.sustainment;
-            redistribution[sustainer] += amountShare;
+            uint256 amountShare = (purpose.sustainments[sustainer].mul(amount)).div()
+                purpose.sustainment);
+            redistribution[sustainer] = redistribution[sustainer].add(
+                amountShare
+            );
         }
     }
 }
