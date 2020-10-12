@@ -12,7 +12,7 @@ contract Organism {
     // The Purpose structure represents a purpose envisioned by a steward, and accounts for who has contributed to the vision.
     struct Purpose {
         // A unique ID for this purpose.
-        uint id;
+        uint256 id;
         // The address which is stewarding this purpose and which has access to its funds.
         address steward;
         // The token that this Purpose can be funded with.
@@ -37,7 +37,7 @@ contract Organism {
         bool exists;
     }
 
-    enum Pools { REDISTRIBUTION, FUND }
+    enum Pools {REDISTRIBUTION, FUND}
 
     // The current Purposes, which are immutable once the Purpose receives some sustainment.
     mapping(address => Purpose) currentPurposes;
@@ -56,36 +56,31 @@ contract Organism {
     IERC20 public DAI;
 
     event PurposeCreated(
-        uint indexed id,
+        uint256 indexed id,
         address indexed by,
         uint256 sustainability,
         uint256 duration,
-        address want 
+        address want
     );
 
     event PurposeSustained(
         uint256 indexed id,
         address indexed sustainer,
-        uint256 amount,
+        uint256 amount
     );
 
-    event Withdrawl(
-        address indexed by,
-        Pool indexed from, 
-        uint256 amount,
-    );
+    event Withdrawl(address indexed by, Pool indexed from, uint256 amount);
 
-    event PurposeBecameSustainable(
-        uint256 indexed id,
-        uint256 indexed steward,
-    );
+    event PurposeBecameSustainable(uint256 indexed id, uint256 indexed steward);
 
     constructor() public {
         DAI = IERC20(address(0x6B175474E89094C44Da98b954EedeAC495271d0F));
         numPurposes = 0;
     }
 
-    function updateSustainability(uint256 _sustainability, address _want) public {
+    function updateSustainability(uint256 _sustainability, address _want)
+        public
+    {
         Purpose storage purpose = purposeToUpdate(msg.sender);
         purpose.sustainability = _sustainability;
         purpose.want = _want;
@@ -111,9 +106,12 @@ contract Organism {
         uint256 _sustainability,
         address _want,
         uint256 _duration,
-        uint256 purpose _start,
+        uint256 _start
     ) public {
-        require(!currentPurposes[msg.sender].exists, "You already have a purpose.")
+        require(
+            !currentPurposes[msg.sender].exists,
+            "You already have a purpose."
+        );
         Purpose storage purpose = currentPurposes[msg.sender];
         purpose.start = _start;
         purpose.id = numPurposes;
@@ -121,7 +119,13 @@ contract Organism {
         purpose.duration = _duration;
         purpose.want = _want;
 
-        emit PurposeCreated(numPurposes, msg.sender, _sustainability, _duration, _want) 
+        emit PurposeCreated(
+            numPurposes,
+            msg.sender,
+            _sustainability,
+            _duration,
+            _want
+        );
 
         numPurposes.add(1);
     }
@@ -227,13 +231,12 @@ contract Organism {
         }
 
         // Save the amount to distribute before changing the state.
-        uint256 surplus = _purpose.sustainment <=
-            _purpose.sustainability
+        uint256 surplus = _purpose.sustainment <= _purpose.sustainability
             ? 0
             : _purpose.sustainment.sub(_purpose.sustainability);
 
         // //TODO market buy native token.
-        // uint amountToDistribute = _amount.sub(calculateFee(_amount, 1000); 
+        // uint amountToDistribute = _amount.sub(calculateFee(_amount, 1000);
 
         // Redistribute any leftover amount.
         if (amountToDistribute > 0) {
@@ -241,9 +244,11 @@ contract Organism {
         }
 
         // Emit events.
-        emit PurposeSustained(_purpose.id, msg.sender, _amount)
-        if (!isSustainable && _purpose.sustainments >= _purpose.sustanainability) {
-          emit PurposeBecameSustainable(_purpose.id, _purpose.steward)
+        emit PurposeSustained(_purpose.id, msg.sender, _amount);
+        if (
+            !isSustainable && _purpose.sustainments >= _purpose.sustanainability
+        ) {
+            emit PurposeBecameSustainable(_purpose.id, _purpose.steward);
         }
     }
 
@@ -252,7 +257,10 @@ contract Organism {
         private
         returns (Purpose storage)
     {
-        require(currentPurposes[_address].exists, "You don't yet have a purpose.")
+        require(
+            currentPurposes[_address].exists,
+            "You don't yet have a purpose."
+        );
 
         // If the steward's current Purpose does not yet have sustainments, return it.
         if (currentPurposes[_steward].sustainment == 0) {
@@ -270,9 +278,12 @@ contract Organism {
         return nextPurposes[_steward];
     }
 
-    function calculateFee(uint256 _amount, uint8 basisPoints) internal returns(uint256) {
-      require((amount / 10000) * 10000 == _amount, "Amount too small");
-      return amount * basisPoints / 1000;
+    function calculateFee(uint256 _amount, uint8 basisPoints)
+        internal
+        returns (uint256)
+    {
+        require((amount / 10000) * 10000 == _amount, "Amount too small");
+        return (amount * basisPoints) / 1000;
     }
 
     // Proportionally allocate the specified amount to the contributors of the specified Purpose,
@@ -284,8 +295,8 @@ contract Organism {
         // For each sustainer, calculate their share of the sustainment and allocate a proportional share of the amount.
         for (uint256 i = 0; i < purpose.sustainers.length; i++) {
             address sustainer = purpose.sustainers[i];
-            uint256 amountShare = (purpose.sustainments[sustainer].mul(amount)).div()
-                purpose.sustainment);
+            uint256 amountShare = (purpose.sustainments[sustainer].mul(amount))
+                .div(purpose.sustainment);
             redistribution[sustainer] = redistribution[sustainer].add(
                 amountShare
             );
