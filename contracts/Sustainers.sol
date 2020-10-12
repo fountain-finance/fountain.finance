@@ -18,7 +18,7 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
  To avoid abuse, it's impossible for a steward to update a Purpose's sustainability or duration once there has been a sustainment made to it. 
  Any attempts to do so will just create/update the steward's queued purpose.
 
- You can withdrawl funds of yours from the sustainers pool (where surplus is distributed) or the sustainability pool (where sustainments are kept) at anytime.
+ You can withdraw funds of yours from the sustainers pool (where surplus is distributed) or the sustainability pool (where sustainments are kept) at anytime.
 
 */
 contract Organism {
@@ -83,7 +83,7 @@ contract Organism {
         uint256 amount
     );
 
-    event Withdrawl(address indexed by, Pool indexed from, uint256 amount);
+    event Withdraw(address indexed by, Pool indexed from, uint256 amount);
 
     event PurposeBecameSustainable(uint256 indexed id, uint256 indexed steward);
 
@@ -159,11 +159,11 @@ contract Organism {
         sustainPurpose(currentPurpose, _steward, _amount);
     }
 
-    // A message sender can withdrawl what's been redistributed to it.
-    function withdrawlSustainers(uint256 _amount) public {
+    // A message sender can withdraw what's been redistributed to it.
+    function withdrawSustainers(uint256 _amount) public {
         require(
             sustainersPool[msg.sender] >= _amount,
-            "You don't have enough to withdrawl this much."
+            "You don't have enough to withdraw this much."
         );
 
         require(
@@ -172,14 +172,14 @@ contract Organism {
         );
         sustainersPool[msg.sender] = sustainersPool[msg.sender].sub(_amount);
 
-        emit Withdrawl(msg.sender, Pool.SUSTAINERS, _amount);
+        emit Withdraw(msg.sender, Pool.SUSTAINERS, _amount);
     }
 
     // A message sender can withdrawl funds that have been used to sustain it's Purposes.
-    function withdrawlSustainability(uint256 _amount) public {
+    function withdrawSustainability(uint256 _amount) public {
         require(
             sustainabilityPool[msg.sender] >= _amount,
-            "You don't have enough to withdrawl this much."
+            "You don't have enough to withdraw this much."
         );
 
         require(
@@ -190,7 +190,7 @@ contract Organism {
             _amount
         );
 
-        emit Withdrawl(msg.sender, Pool.SUSTAINABILITY, _amount);
+        emit Withdraw(msg.sender, Pool.SUSTAINABILITY, _amount);
     }
 
     // Contribute a specified amount to the sustainability of a Purpose stewarded by the specified address.
@@ -212,7 +212,7 @@ contract Organism {
             return;
         }
 
-        // The amount that should be reserved for the steward to withdrawl.
+        // The amount that should be reserved for the steward to withdraw.
         unit amountToSendToSteward = _purpose.sustainability.sub(
             _purpose.sustainment
         ) > _amount
@@ -233,7 +233,7 @@ contract Organism {
             "Transfer failed."
         );
 
-        // Increment the funds that the steward has access to withdrawl.
+        // Increment the funds that the steward has access to withdraw.
         funds[_steward] = funds[_steward].add(amountToSendToSteward);
 
         // Increment the sustainments to the Purpose made by the message sender.
