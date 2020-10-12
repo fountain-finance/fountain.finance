@@ -85,9 +85,10 @@ contract Organism {
         numPurposes = 0;
     }
 
-    function updateSustainability(uint256 _sustainability) public {
+    function updateSustainability(uint256 _sustainability, address _want) public {
         Purpose storage purpose = purposeToUpdate(msg.sender);
         purpose.sustainability = _sustainability;
+        purpose.want = _want;
     }
 
     function updateDuration(uint256 _duration) public {
