@@ -295,8 +295,8 @@ contract Sustainers {
         private
         returns (uint256)
     {
-        require((amount / 10000) * 10000 == _amount, "Amount too small");
-        return (amount * basisPoints) / 1000;
+        require((amount.div(10000)).mul(10000) == _amount, "Amount too small");
+        return (amount.mul(basisPoints)).div(1000);
     }
 
     // Proportionally allocate the specified amount to the contributors of the specified Purpose,
