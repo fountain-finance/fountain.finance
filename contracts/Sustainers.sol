@@ -45,8 +45,6 @@ contract Organism {
         address[] sustainers;
         // The amount each address has contributed to the sustaining of this purpose.
         mapping(address => uint256) sustainments;
-        // The net amount each address has contributed to the sustaining of this purpose after redistribution.
-        mapping(address => uint256) netSustainments;
         // The amount that has been redistributed to each address as a consequence of abundant sustainment of this Purpose.
         mapping(address => uint256) redistribution;
         // Helper to verify this Purpose exists.
