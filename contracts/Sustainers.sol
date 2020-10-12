@@ -5,14 +5,11 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 
 /* 
 
- The Organism contract specifies the metaphysical workings of a system made up of Purposes and their stewards, constrained only by time.
- Each Purpose is premeditated with sustainability number that can be contributed towards by any sustainer. Any surplus get's redistributed proportionally back to sustainers.
-  
- No seriously, don't over think it. Create a Purpose and say how much it'll cost you to persue that purpose. 
+ Create a Purpose and say how much it'll cost to persue that purpose. 
  Maybe your purpose is providing a service or public good, maybe it's being a YouTuber, engineer, or artist -- or anything else.
  Anyone with your address can help sustain your purpose, and once you're sustainable any additional contributions are redistributed back your sustainers.
 
- Your purpose could be personal, or it could be managed by an address controlled by a community or business. 
+ Your Purpose could be personal, or it could be managed by an address controlled by a community or business. 
  Either way, an address can only have one active Purpose at a time, and one queued up for when the active one expires.
 
  To avoid abuse, it's impossible for a steward to update a Purpose's sustainability or duration once there has been a sustainment made to it. 
@@ -21,7 +18,7 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
  You can withdraw funds of yours from the sustainers pool (where surplus is distributed) or the sustainability pool (where sustainments are kept) at anytime.
 
 */
-contract Organism {
+contract Sustainers {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
