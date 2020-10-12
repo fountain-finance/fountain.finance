@@ -18,7 +18,7 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
  To avoid abuse, it's impossible for a steward to update a Purpose's sustainability or duration once there has been a sustainment made to it. 
  Any attempts to do so will just create/update the steward's queued purpose.
 
- You can withdrawl funds of yours from the sustainers pool (where surplus is distributed) or the sustainability pool (where sustainments are kept) anytime.
+ You can withdrawl funds of yours from the sustainers pool (where surplus is distributed) or the sustainability pool (where sustainments are kept) at anytime.
 
 */
 contract Organism {
