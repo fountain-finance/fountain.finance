@@ -3,8 +3,22 @@ pragma solidity >=0.4.25 <0.7.0;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
-// The Organism contract specifies the metaphysical workings of a system made up of Purposes and their stewards, constrained only by time.
-// Each Purpose has a predefined sustainability that can be contributed to by any sustainer, after which the surplus get's redistributed proportionally to sustainers.
+/* 
+
+ The Organism contract specifies the metaphysical workings of a system made up of Purposes and their stewards, constrained only by time.
+ Each Purpose has a predefined sustainability that can be contributed to by any sustainer, after which the surplus get's redistributed proportionally to sustainers.
+  
+ No seriously, don't over think it. Create a Purpose and say how much it'll cost you to persue that purpose. 
+ Maybe your purpose is providing a service or public good, maybe it's being a YouTuber, engineer, or artist -- or anything else.
+ Anyone with your address can help sustain your purpose, and once you're sustainable any additional contributions are redistributed back your sustainers.
+
+ Your purpose could be personal, or it could be an address controlled by a community or business. Either way, an address can only have one active Purpose at a time, and one queued up for when the active one expires.
+
+ You can't update your a Purpose's sustainability or duration once there has been a sustainment made to it. Any attempts to do so will just create/update your queued purpose.
+
+ You can withdrawl funds of yours from the sustainers pool (where surplus is distributed) or the sustainability pool (where sustainments are kept) anytime.
+
+*/
 contract Organism {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
@@ -37,7 +51,7 @@ contract Organism {
         bool exists;
     }
 
-    enum Pools {REDISTRIBUTION, FUND}
+    enum Pools {SUSTAINERS, SUSTAINABILITY}
 
     // The current Purposes, which are immutable once the Purpose receives some sustainment.
     mapping(address => Purpose) currentPurposes;
@@ -46,10 +60,10 @@ contract Organism {
     mapping(address => Purpose) nextPurposes;
 
     // The amount that has been redistributed to each address as a consequence of overall abundance.
-    mapping(address => uint256) redistribution;
+    mapping(address => uint256) sustainersPool;
 
     // The funds that have accumulated to sustain each steward's Purposes.
-    mapping(address => uint256) funds;
+    mapping(address => uint256) sustainabilityPool;
 
     unit256 numPurposes;
 
@@ -146,9 +160,9 @@ contract Organism {
     }
 
     // A message sender can withdrawl what's been redistributed to it.
-    function withdrawlRedistribution(uint256 _amount) public {
+    function withdrawlSustainers(uint256 _amount) public {
         require(
-            redistribution[msg.sender] >= _amount,
+            sustainersPool[msg.sender] >= _amount,
             "You don't have enough to withdrawl this much."
         );
 
@@ -156,15 +170,15 @@ contract Organism {
             DAI.transferFrom(address(this), msg.sender, _amount),
             "Transfer failed."
         );
-        redistribution[msg.sender] = redistribution[msg.sender].sub(_amount);
+        sustainersPool[msg.sender] = sustainersPool[msg.sender].sub(_amount);
 
-        emit Withdrawl(msg.sender, Pool.REDISTRIBUTION, _amount);
+        emit Withdrawl(msg.sender, Pool.SUSTAINERS, _amount);
     }
 
     // A message sender can withdrawl funds that have been used to sustain it's Purposes.
-    function withdrawlFunds(uint256 _amount) public {
+    function withdrawlSustainability(uint256 _amount) public {
         require(
-            funds[msg.sender] >= _amount,
+            sustainabilityPool[msg.sender] >= _amount,
             "You don't have enough to withdrawl this much."
         );
 
@@ -172,9 +186,11 @@ contract Organism {
             DAI.transferFrom(address(this), msg.sender, _amount),
             "Transfer failed."
         );
-        funds[msg.sender] = funds[msg.sender].sub(_amount);
+        sustainabilityPool[msg.sender] = sustainabilityPool[msg.sender].sub(
+            _amount
+        );
 
-        emit Withdrawl(msg.sender, Pool.FUND, _amount);
+        emit Withdrawl(msg.sender, Pool.SUSTAINABILITY, _amount);
     }
 
     // Contribute a specified amount to the sustainability of a Purpose stewarded by the specified address.
@@ -279,7 +295,7 @@ contract Organism {
     }
 
     function calculateFee(uint256 _amount, uint8 basisPoints)
-        internal
+        private
         returns (uint256)
     {
         require((amount / 10000) * 10000 == _amount, "Amount too small");
@@ -289,7 +305,7 @@ contract Organism {
     // Proportionally allocate the specified amount to the contributors of the specified Purpose,
     // meaning each sustainer will receive a portion of the specified amount equivalent to the portion of the total
     // amount contributed to the sustainment of the Purpose that they are responsible for.
-    function redistribute(Purpose storage purpose, uint256 amount) internal {
+    function redistribute(Purpose storage purpose, uint256 amount) private {
         assert(amount > 0);
 
         // For each sustainer, calculate their share of the sustainment and allocate a proportional share of the amount.
@@ -297,7 +313,7 @@ contract Organism {
             address sustainer = purpose.sustainers[i];
             uint256 amountShare = (purpose.sustainments[sustainer].mul(amount))
                 .div(purpose.sustainment);
-            redistribution[sustainer] = redistribution[sustainer].add(
+            sustainersPool[sustainer] = sustainersPool[sustainer].add(
                 amountShare
             );
         }
