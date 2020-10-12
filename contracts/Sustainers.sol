@@ -13,7 +13,7 @@ contract Sustainers {
     struct Purpose {
         // The address which is stewarding this purpose.
         address steward;
-        // The token that this Purpose can is funded with.
+        // The token that this Purpose can be funded with.
         address want;
         // The amount that represents sustainability for this purpose.
         uint256 sustainability;
