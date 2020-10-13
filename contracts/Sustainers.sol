@@ -29,14 +29,14 @@ contract Sustainers {
         // The address which is stewarding this purpose and which has access to its funds.
         address steward;
         // The token that this Purpose can be funded with.
-        address want;
+        IERC20 want;
         // The amount that represents sustainability for this purpose.
-        uint256 sustainability;
+        uint256 sustainabilityTarget;
         // The running amount that's been contributed to sustaining this purpose.
         uint256 sustainment;
         // The time when this Purpose will become active.
         uint256 start;
-        // The number of days this Purpose can be sustained for according to `sustainability`.
+        // The number of days this Purpose can be sustained for according to `sustainabilityTarget`.
         uint256 duration;
         // The addresses who have helped to sustain this purpose.
         address[] sustainers;
@@ -62,6 +62,7 @@ contract Sustainers {
     // The funds that have accumulated to sustain each steward's Purposes.
     mapping(address => uint256) sustainabilityPool;
 
+    // The total number of Purposes created, which is used for issuing Purpose IDs.
     unit256 numPurposes;
 
     IERC20 public DAI;
@@ -69,7 +70,7 @@ contract Sustainers {
     event PurposeCreated(
         uint256 indexed id,
         address indexed by,
-        uint256 sustainability,
+        uint256 sustainabilityTarget,
         uint256 duration,
         address want
     );
@@ -89,11 +90,30 @@ contract Sustainers {
         numPurposes = 0;
     }
 
-    function updateSustainability(uint256 _sustainability, address _want)
+    function getSustainment(address _steward)
+        public
+        view
+        returns (
+            uint256 total,
+            uint256 net,
+            uint256 share,
+            uint256 purposeId
+        )
+    {
+        Purpose memory purpose = currentPurposes[_steward];
+        total = purpose.sustainments[msg.sender];
+        net = purpose.sustainments[msg.sender].sub(
+            purpose.redistribution[msg.sender]
+        );
+        share = purpose.sustainments[msg.sender].div(purpose.sustainment);
+        purposeId = purpose.id;
+    }
+
+    function updateSustainability(uint256 _sustainabilityTarget, address _want)
         public
     {
         Purpose storage purpose = purposeToUpdate(msg.sender);
-        purpose.sustainability = _sustainability;
+        purpose.sustainabilityTarget = _sustainabilityTarget;
         purpose.want = _want;
     }
 
@@ -103,19 +123,18 @@ contract Sustainers {
     }
 
     function updatePurpose(
-        uint256 _sustainability,
+        uint256 _sustainabilityTarget,
         uint256 _duration,
         address _want
     ) public {
         Purpose storage purpose = purposeToUpdate(msg.sender);
-        purpose.sustainability = _sustainability;
+        purpose.sustainabilityTarget = _sustainabilityTarget;
         purpose.duration = _duration;
         purpose.want = _want;
     }
 
     function createPurpose(
-        uint256 _sustainability,
-        address _want,
+        uint256 _sustainabilityTarget,
         uint256 _duration,
         uint256 _start
     ) public {
@@ -126,17 +145,11 @@ contract Sustainers {
         Purpose storage purpose = currentPurposes[msg.sender];
         purpose.start = _start;
         purpose.id = numPurposes;
-        purpose.sustainability = _sustainability;
+        purpose.sustainabilityTarget = _sustainabilityTarget;
         purpose.duration = _duration;
-        purpose.want = _want;
+        purpose.want = DAI;
 
-        emit PurposeCreated(
-            numPurposes,
-            msg.sender,
-            _sustainability,
-            _duration,
-            _want
-        );
+        emit PurposeCreated(numPurposes, msg.sender, _Target, _duration, _want);
 
         numPurposes.add(1);
     }
@@ -144,20 +157,90 @@ contract Sustainers {
     // Contribute a specified amount to the sustainability of the specified Steward's active Purpose.
     // If the amount results in surplus, redistribute the surplus proportionally to sustainers of the Purpose.
     function sustain(address _steward, uint256 _amount) public {
-        // The function first tries to operate on the state of the current Purpose belonging to the specified steward.
+        require(_amount > 0, "The sustainment amount should be positive.");
+
+        // The function operates on the state of the current Purpose belonging to the specified steward.
         Purpose storage currentPurpose = currentPurposes[_steward];
 
         require(
             currentPurpose.exists,
             "This account isn't currently stewarding a purpose."
         );
-        require(_amount > 0, "The sustainment amount should be positive.");
 
-        sustainPurpose(currentPurpose, _steward, _amount);
+        // If the current time is greater than the current Purpose's endTime, make the next Purpose the current Purpose if one exists.
+        if (now > currentPurpose.start + (currentPurpose.duration * 1 days)) {
+            Purpose storage nextPurpose = nextPurposes[_steward];
+            currentPurpose = nextPurpose;
+            sustainActivePurpose(_steward, _amount);
+            return;
+        }
+
+        // The amount that should be reserved for the steward to withdraw.
+        unit256 amountToSendToSteward = currentPurpose.sustainabilityTarget.sub(
+            currentPurpose.sustainment
+        ) > _amount
+            ? _amount
+            : currentPurpose.sustainabilityTarget.sub(
+                currentPurpose.sustainment
+            );
+
+        // Save if the message sender is contributing to this Purpose for the first time.
+        bool isNewSustainer = currentPurpose.sustainments[msg.sender] == 0;
+        // Save if the purpose is sustainable before operating on its state.
+        bool isSustainable = currentPurpose.sustainments >=
+            currentPurpose.sustanainability;
+
+        // Move the full sustainment amount to this address.
+        require(
+            daiInstance.transferFrom(msg.sender, address(this), _amount),
+            "Transfer failed."
+        );
+
+        // Increment the funds that the steward has access to withdraw.
+        sustainabilityPool[_steward] = sustainabilityPool[_steward].add(
+            amountToSendToSteward
+        );
+
+        // Increment the sustainments to the Purpose made by the message sender.
+        currentPurpose.sustainments[msg.sender] = currentPurpose
+            .sustainments[msg.sender]
+            .add(_amount);
+        // Increment the total amount contributed to the sustainment of the Purpose.
+        currentPurpose.sustainment = currentPurpose.sustainment.add(_amount);
+        // Add the message sender as a sustainer of the Purpose if this is the first sustainment it's making to it.
+        if (isNewSustainer) {
+            currentPurpose.sustainers.push(msg.sender);
+        }
+
+        // Save the amount to distribute before changing the state.
+        uint256 surplus = currentPurpose.sustainment <=
+            currentPurpose.sustainability
+            ? 0
+            : currentPurpose.sustainment.sub(currentPurpose.sustainability);
+
+        // //TODO market buy native token.
+        // uint amountToDistribute = _amount.sub(calculateFee(_amount, 1000);
+
+        // Redistribute any leftover amount.
+        if (surplus > 0) {
+            redistribute(currentPurpose, amount);
+        }
+
+        // Emit events.
+        emit PurposeSustained(currentPurpose.id, msg.sender, _amount);
+        if (
+            !isSustainable &&
+            currentPurpose.sustainments >= currentPurpose.sustanainability
+        ) {
+            emit PurposeBecameSustainable(
+                currentPurpose.id,
+                currentPurpose.steward
+            );
+        }
     }
 
     // A message sender can withdraw what's been redistributed to it.
-    function withdrawSustainers(uint256 _amount) public {
+    function withdrawFromSustainersPool(uint256 _amount) public {
         require(
             sustainersPool[msg.sender] >= _amount,
             "You don't have enough to withdraw this much."
@@ -173,7 +256,7 @@ contract Sustainers {
     }
 
     // A message sender can withdrawl funds that have been used to sustain it's Purposes.
-    function withdrawSustainability(uint256 _amount) public {
+    function withdrawFromSustainabilityPool(uint256 _amount) public {
         require(
             sustainabilityPool[msg.sender] >= _amount,
             "You don't have enough to withdraw this much."
@@ -192,78 +275,7 @@ contract Sustainers {
 
     // Contribute a specified amount to the sustainability of a Purpose stewarded by the specified address.
     // If the amount results in surplus, redistribute the surplus proportionally to sustainers of the Purpose.
-    function sustainPurpose(
-        Purpose storage _purpose,
-        address _steward,
-        uint256 _amount
-    ) private {
-        // If the current time is greater than the current Purpose's endTime, progress to the next Purpose.
-        if (now > _purpose.start + (_purpose.duration * 1 days)) {
-            Purpose storage nextPurpose = nextPurposes[_steward];
-            require(
-                nextPurpose.exists,
-                "This account isn't currently stewarding a purpose."
-            );
-            currentPurposes[_steward] = nextPurposes[_steward];
-            sustainPurpose(_purpose, _steward, _amount);
-            return;
-        }
-
-        // The amount that should be reserved for the steward to withdraw.
-        unit amountToSendToSteward = _purpose.sustainability.sub(
-            _purpose.sustainment
-        ) > _amount
-            ? _amount
-            : _purpose.sustainability.sub(_purpose.sustainment);
-
-        // Save if the message sender is contributing to this Purpose for the first time.
-        bool isNewSustainer = _purpose.sustainments[msg.sender] == 0;
-        // Save if the purpose is sustainable before operating on its state.
-        bool isSustainable = _purpose.sustainments >= _purpose.sustanainability;
-
-        require(
-            daiInstance.transferFrom(
-                msg.sender,
-                address(this),
-                amountToSendToSteward
-            ),
-            "Transfer failed."
-        );
-
-        // Increment the funds that the steward has access to withdraw.
-        funds[_steward] = funds[_steward].add(amountToSendToSteward);
-
-        // Increment the sustainments to the Purpose made by the message sender.
-        _purpose.sustainments[msg.sender] = _purpose.sustainments[msg.sender]
-            .add(_amount);
-        // Increment the total amount contributed to the sustainment of the Purpose.
-        _purpose.sustainment = _purpose.sustainment.add(_amount);
-        // Add the message sender as a sustainer of the Purpose if this is the first sustainment it's making to it.
-        if (isNewSustainer) {
-            _purpose.sustainers.push(msg.sender);
-        }
-
-        // Save the amount to distribute before changing the state.
-        uint256 surplus = _purpose.sustainment <= _purpose.sustainability
-            ? 0
-            : _purpose.sustainment.sub(_purpose.sustainability);
-
-        // //TODO market buy native token.
-        // uint amountToDistribute = _amount.sub(calculateFee(_amount, 1000);
-
-        // Redistribute any leftover amount.
-        if (amountToDistribute > 0) {
-            redistribute(_purpose, amountToDistribute);
-        }
-
-        // Emit events.
-        emit PurposeSustained(_purpose.id, msg.sender, _amount);
-        if (
-            !isSustainable && _purpose.sustainments >= _purpose.sustanainability
-        ) {
-            emit PurposeBecameSustainable(_purpose.id, _purpose.steward);
-        }
-    }
+    function sustainActivePurpose(address _steward, uint256 _amount) private {}
 
     // The sustainability of a Purpose cannot be updated if there have been sustainments made to it.
     function purposeToUpdate(address _steward)
@@ -310,6 +322,12 @@ contract Sustainers {
             address sustainer = purpose.sustainers[i];
             uint256 amountShare = (purpose.sustainments[sustainer].mul(amount))
                 .div(purpose.sustainment);
+            //Store the reditribution in the Purpose.
+            purpose.redistribution[sustainer] = purpose
+                .redistribution[sustainer]
+                .add(amountShare);
+
+            //Store the redistribution in the sustainers pool.
             sustainersPool[sustainer] = sustainersPool[sustainer].add(
                 amountShare
             );
