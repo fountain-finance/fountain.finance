@@ -11,7 +11,7 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
  Anyone with your address can help sustain your purpose, and once you're sustainable any additional contributions are redistributed back your sustainers.
 
  Your Purpose could be personal, or it could be managed by an address controlled by a community or business. 
- Either way, an address can only have one active Purpose at a time, and one queued up for when the active one expires.
+ Either way, an address can only steward one active Purpose at a time, and one queued up for when the active one expires.
 
  To avoid abuse, it's impossible for a steward to update a Purpose's sustainability or duration once there has been a sustainment made to it. 
  Any attempts to do so will just create/update the steward's queued purpose.
@@ -23,7 +23,7 @@ contract Sustainers {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
-    // The Purpose structure represents a purpose envisioned by a steward, and accounts for who has contributed to the vision.
+    // The Purpose structure represents a purpose envisioned by a steward, and accounts for who has contributed it.
     struct Purpose {
         // A unique ID for this purpose.
         uint256 id;
