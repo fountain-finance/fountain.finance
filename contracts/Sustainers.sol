@@ -29,7 +29,7 @@ contract Sustainers {
         uint256 id;
         // The address which is stewarding this purpose and which has access to its funds.
         address steward;
-        // The token that this Purpose can be funded with.
+        // The token that this Purpose can be funded with. Currently only DAI is supported.
         IERC20 want;
         // The amount that represents sustainability for this purpose.
         uint256 sustainabilityTarget;
@@ -66,6 +66,7 @@ contract Sustainers {
     // The total number of Purposes created, which is used for issuing Purpose IDs.
     uint256 numPurposes;
 
+    // The contract currently only supports sustainments in DAI.
     IERC20 public DAI;
 
     event PurposeCreated(
