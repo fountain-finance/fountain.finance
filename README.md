@@ -14,4 +14,4 @@ Today, the developer <==> community relationship mediated by computers and the i
 
 ___
 
-I suppose this can also be useful for crowdsource fundraising.
+This can also be useful for crowdsource fundraising.
