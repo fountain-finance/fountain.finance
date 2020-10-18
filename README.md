@@ -10,7 +10,7 @@ Useful for facilitating next-generation contributer-driven business models, wher
 
 The thesis here is that the cost to develop, run, grow, and maintain global-scale software projects has become more and more predictable because we've abstracted and automated away so much complexity and variability behind cloud computing service providers and Ethereum. Meanwhile Twitter and GitHub happened, allowing a project's developer(s) and its community to exchange ideas and earn each others' trust more collaboratively, authentically, and iteratively. 
 
-The developer <==> community relationship is all it takes to encourage productive behavior and sustain a sense of purpose. The opportunity that arises is for a mechanism that ensures a valued project's sustainable growth while pushing each individual community member's price towards zero as the community grows. Sustainer's does this by allowing projects to publish what sustainability means to them for a specified duration ahead of time.
+Today, the developer <==> community relationship is all it takes to encourage productive behavior and sustain a sense of purpose. The opportunity that arises is for a mechanism that ensures a valued project's sustainable growth while pushing each individual community member's price towards zero as the community grows. Sustainer's does this by allowing projects to publish what sustainability means to them for a specified duration ahead of time.
 
 ___
 
