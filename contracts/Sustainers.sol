@@ -11,10 +11,10 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
  Anyone with your address can help sustain your purpose, and once you're sustainable any additional contributions are redistributed back your sustainers.
 
  Your Purpose could be personal, or it could be managed by an address controlled by a community or business. 
- Either way, an address can only steward one active Purpose at a time, and one queued up for when the active one expires.
+ Either way, an address can only be associated with one active Purpose at a time, and one queued up for when the active one expires.
 
- To avoid abuse, it's impossible for a steward to update a Purpose's sustainability or duration once there has been a sustainment made to it. 
- Any attempts to do so will just create/update the steward's queued purpose.
+ To avoid abuse, it's impossible for a Purpose's sustainability or duration to be changed once there has been a sustainment made to it. 
+ Any attempts to do so will just create/update the message sender's queued purpose.
 
  You can withdraw funds of yours from the sustainers pool (where surplus is distributed) or the sustainability pool (where sustainments are kept) at anytime.
 
@@ -23,12 +23,12 @@ contract Sustainers {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
-    // The Purpose structure represents a purpose envisioned by a steward, and accounts for who has contributed it.
+    // The Purpose structure represents a purpose stewarded by an address, and accounts for which addresses have contributed to it.
     struct Purpose {
         // A unique ID for this purpose.
         uint256 id;
-        // The address which is stewarding this purpose and which has access to its funds.
-        address steward;
+        // The address who defined this Purpose and who has access to its sustainments.
+        address who;
         // The token that this Purpose can be funded with. Currently only DAI is supported.
         IERC20 want;
         // The amount that represents sustainability for this purpose.
@@ -60,7 +60,7 @@ contract Sustainers {
     // The amount that has been redistributed to each address as a consequence of overall abundance.
     mapping(address => uint256) sustainersPool;
 
-    // The funds that have accumulated to sustain each steward's Purposes.
+    // The funds that have accumulated to sustain each address's Purposes.
     mapping(address => uint256) sustainabilityPool;
 
     // The total number of Purposes created, which is used for issuing Purpose IDs.
@@ -85,14 +85,14 @@ contract Sustainers {
 
     event Withdraw(address indexed by, Pool indexed from, uint256 amount);
 
-    event PurposeBecameSustainable(uint256 indexed id, address indexed steward);
+    event PurposeBecameSustainable(uint256 indexed id, address indexed who);
 
     constructor() public {
         DAI = IERC20(address(0x6B175474E89094C44Da98b954EedeAC495271d0F));
         numPurposes = 0;
     }
 
-    function getSustainment(address _steward)
+    function getSustainment(address _who)
         public
         view
         returns (
@@ -102,7 +102,7 @@ contract Sustainers {
             uint256 purposeId
         )
     {
-        Purpose storage purpose = currentPurposes[_steward];
+        Purpose storage purpose = currentPurposes[_who];
         total = purpose.sustainments[msg.sender];
         net = purpose.sustainments[msg.sender].sub(
             purpose.redistribution[msg.sender]
@@ -162,31 +162,31 @@ contract Sustainers {
         numPurposes.add(1);
     }
 
-    // Contribute a specified amount to the sustainability of the specified Steward's active Purpose.
+    // Contribute a specified amount to the sustainability of the specified address's active Purpose.
     // If the amount results in surplus, redistribute the surplus proportionally to sustainers of the Purpose.
-    function sustain(address _steward, uint256 _amount) public {
+    function sustain(address _who, uint256 _amount) public {
         require(_amount > 0, "The sustainment amount should be positive.");
 
-        // The function operates on the state of the current Purpose belonging to the specified steward.
-        Purpose storage currentPurpose = currentPurposes[_steward];
+        // The function operates on the state of the current Purpose belonging to the specified who.
+        Purpose storage currentPurpose = currentPurposes[_who];
 
         require(
             currentPurpose.exists,
-            "This account isn't currently stewarding a purpose."
+            "This account doesn't yet have purpose."
         );
 
         // If the current time is greater than the current Purpose's endTime, make the next Purpose the current Purpose if one exists.
         if (now > currentPurpose.start + (currentPurpose.duration * 1 days)) {
-            Purpose storage nextPurpose = nextPurposes[_steward];
+            Purpose storage nextPurpose = nextPurposes[_who];
             currentPurpose = nextPurpose;
-            sustainActivePurpose(_steward, _amount);
+            sustainActivePurpose(_who, _amount);
             return;
         }
 
-        // The amount that should be reserved for the steward to withdraw.
-        uint256 amountToSendToSteward = currentPurpose.sustainabilityTarget.sub(
-            currentPurpose.sustainment
-        ) > _amount
+        // The amount that should be reserved for the Purpose.
+        uint256 amountToAllocateToPurpose = currentPurpose
+            .sustainabilityTarget
+            .sub(currentPurpose.sustainment) > _amount
             ? _amount
             : currentPurpose.sustainabilityTarget.sub(
                 currentPurpose.sustainment
@@ -201,9 +201,9 @@ contract Sustainers {
         // Move the full sustainment amount to this address.
         DAI.transferFrom(msg.sender, address(this), _amount);
 
-        // Increment the funds that the steward has access to withdraw.
-        sustainabilityPool[_steward] = sustainabilityPool[_steward].add(
-            amountToSendToSteward
+        // Increment the funds that can withdrawn for sustainability.
+        sustainabilityPool[_who] = sustainabilityPool[_who].add(
+            amountToAllocateToPurpose
         );
 
         // Increment the sustainments to the Purpose made by the message sender.
@@ -241,7 +241,7 @@ contract Sustainers {
         ) {
             emit PurposeBecameSustainable(
                 currentPurpose.id,
-                currentPurpose.steward
+                currentPurpose.who
             );
         }
     }
@@ -276,34 +276,28 @@ contract Sustainers {
         emit Withdraw(msg.sender, Pool.SUSTAINABILITY, _amount);
     }
 
-    // Contribute a specified amount to the sustainability of a Purpose stewarded by the specified address.
+    // Contribute a specified amount to the sustainability of the specified address's current Purpose.
     // If the amount results in surplus, redistribute the surplus proportionally to sustainers of the Purpose.
-    function sustainActivePurpose(address _steward, uint256 _amount) private {}
+    function sustainActivePurpose(address _who, uint256 _amount) private {}
 
     // The sustainability of a Purpose cannot be updated if there have been sustainments made to it.
-    function purposeToUpdate(address _steward)
-        private
-        returns (Purpose storage)
-    {
-        require(
-            currentPurposes[_steward].exists,
-            "You don't yet have a purpose."
-        );
+    function purposeToUpdate(address _who) private returns (Purpose storage) {
+        require(currentPurposes[_who].exists, "You don't yet have a purpose.");
 
-        // If the steward's current Purpose does not yet have sustainments, return it.
-        if (currentPurposes[_steward].sustainment == 0) {
-            return currentPurposes[_steward];
+        // If the address's current Purpose does not yet have sustainments, return it.
+        if (currentPurposes[_who].sustainment == 0) {
+            return currentPurposes[_who];
         }
 
-        // If the steward does not have a Purpose in the next Chapter, make one and return it.
-        if (!nextPurposes[_steward].exists) {
-            Purpose storage purpose = nextPurposes[_steward];
+        // If the address does not have a Purpose in the next Chapter, make one and return it.
+        if (!nextPurposes[_who].exists) {
+            Purpose storage purpose = nextPurposes[_who];
             purpose.exists = true;
             return purpose;
         }
 
-        // Return the steward's next Purpose.
-        return nextPurposes[_steward];
+        // Return the address's next Purpose.
+        return nextPurposes[_who];
     }
 
     function calculateFee(uint256 _amount, uint8 _basisPoints)
