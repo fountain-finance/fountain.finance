@@ -8,9 +8,10 @@
 
 ## Use cases
 
-1. Useful for crowdsource funding for a specific single-time project where contributers know ahead of time how surplus will be allocated.
+1. Useful for crowdsource funding.
 
-2. Extremely useful for routing business models through, so a company can regularly charge it's customers a transaction fee or monthly subsription fee which decreases for all users once the company reaches sustainability. The theory here is that software's ability to make money is now able to scale much faster than the cost to manage the growth. This creates an opportunity to both ensure the projects sustainability while pushing everyone's price towards zero as usage grows.
+2. Extremely useful for facilitating next-generation contributer-driven business models, where a project's developer(s) and its community members can decide on a transaction fee or regularly-incurring subsription fee which decreases for everyone once the project reaches sustainability.
 
+The thesis here is that the cost to develop, run, grow, and maintain global-scale software projects has become more and more predictable because we've abstracted and automated away so much complexity and variability behind cloud computing service providers and Ethereum. Meanwhile Twitter and GitHub happened, allowing a project's developer(s) and its community to exchange ideas and earn each others' trust more collaboratively, authentically, and iteratively. 
 
-More docs to come.
+The developer <==> community relationship is all it takes to encourage productive behavior and sustain a sense of purpose. The opportunity that arises is for a mechanism that ensures a valued project's sustainabile growth while pushing the community price towards zero as usage grows.
