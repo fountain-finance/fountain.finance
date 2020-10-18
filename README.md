@@ -13,5 +13,6 @@ The thesis here is that the cost to develop, run, grow, and maintain global-scal
 The developer <==> community relationship is all it takes to encourage productive behavior and sustain a sense of purpose. The opportunity that arises is for a mechanism that ensures a valued project's sustainable growth while pushing each individual community member's price towards zero as the community grows. Sustainer's does this by allowing projects to publish what sustainability means to them for a specified duration ahead of time.
 
 
+_____________________________
 
 I suppose this can also be useful for crowdsource fundraising.
