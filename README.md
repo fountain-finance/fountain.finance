@@ -7,7 +7,7 @@
 ### Mechanism
 
 1. Define what sustainability means to your project over a specified period of time.
-2. Anyone or any Contract can send funds to help fulfill your sustainability.
+2. Anyone (or any Contract) can send funds to help fulfill your sustainability.
 3. Any surplus funds get redistributed back to sustainers.
 4. Repeat, updating what sustainability means to you if needed.
 
