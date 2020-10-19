@@ -1,4 +1,5 @@
-![alt text](/imgs/fountain.png "Fountain") 
+<img src="imgs/fountain.png" alt="Fountain" width="100"/>
+
 #### fountain.finance
 
 ##### An experiment in fundraising, income streams, surplus redistribution, and sustainable growth on Ethereum.
