@@ -1,4 +1,4 @@
-![alt text](/imgs/fountains.png "Fountain")
+![alt text](/imgs/fountain.png "Fountain")
 
 #### fountain.finance
 
