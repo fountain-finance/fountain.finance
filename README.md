@@ -7,11 +7,11 @@
 ### Mechanism
 
 1. Define what sustainability means to your project over a specified period of time.
-2. Anyone (or any Contract) can send funds to help fulfill your sustainability.
+2. Anyone anywhere in the world (or any smart contract) can send funds to help fulfill your sustainability.
 3. Any surplus funds get redistributed back to sustainers.
 4. Repeat, updating what sustainability means to you if needed.
 
-Useful for facilitating next-generation contributer-driven internet business models, where a project's developer(s) and its community members can decide on a transaction fee or regularly-incurring subsription fee which decreases for everyone once the project reaches sustainability.
+Useful for facilitating next-generation contributer-driven business models, where a project's developer(s) and its community members can decide on a transaction fee or regularly-incurring subsription fee which decreases for everyone once the project reaches sustainability. 
 
 The thesis here is that the cost to develop, run, grow, and maintain global-scale software projects has become more and more predictable as we've abstracted and automated away complexity and variability behind cloud computing service providers and Ethereum. Meanwhile Twitter and GitHub allow a project's developer(s) and its community to exchange ideas and earn one others' trust more collaboratively, authentically, and iteratively. 
 
