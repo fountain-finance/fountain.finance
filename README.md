@@ -13,7 +13,7 @@
 
 Useful for facilitating next-generation contributer-driven business models, where a project's developer(s) and its community members can decide on a transaction fee or regularly-incurring subsription fee which decreases for everyone once the project reaches sustainability.
 
-The thesis here is that the cost to develop, run, grow, and maintain global-scale software projects has become more and more predictable as we've abstracted and automated away complexity and variability behind cloud computing service providers and Ethereum. Meanwhile Twitter and GitHub happened, allowing a project's developer(s) and its community to exchange ideas and earn one others' trust more collaboratively, authentically, and iteratively. 
+The thesis here is that the cost to develop, run, grow, and maintain global-scale software projects has become more and more predictable as we've abstracted and automated away complexity and variability behind cloud computing service providers and Ethereum. Meanwhile Twitter and GitHub allow a project's developer(s) and its community to exchange ideas and earn one others' trust more collaboratively, authentically, and iteratively. 
 
 Today, the developer <==> community relationship is the bulk of what it takes to encourage productive behavior and sustain a sense of purpose towards a shared goal. The opportunity that arises is for a mechanism that ensures a valued project's sustainable growth while pushing each individual community member's price towards zero as more people come on board. Fountain does this by allowing projects to publish what sustainability means to them for a specified duration ahead of time, and automatically redistributing surplus back to community members.
 
