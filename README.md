@@ -15,7 +15,7 @@ Today thanks to the internet and Ethereum, the developer <==> community relation
 
 Also thanks to Ethereum, it's easy for other Contracts to integrate with Sustainer's, which has makes two important things possible. First, projects can route their income stream through this Contract as a means of competing in the market. Second, it'll be easy to create sustainability dependencies, so a project's sustainability can rely on that of projects it depends on. This mimics an overflowing fountain effect where a stream directed at a top surface can end up filling up the pools of each layer beneath.  
 
-* ⛲️
+### ⛲️
 
 
 ___
