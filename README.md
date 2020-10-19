@@ -1,4 +1,8 @@
-#### sustainers.money
+![alt text](/imgs/fountains.png "Fountain")
+
+#### fountain.finance
+
+##### An experiment in fundraising, income streams, surplus redistribution, and sustainable growth on Ethereum.
 
 ### Mechanism
 

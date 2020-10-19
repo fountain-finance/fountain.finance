@@ -8,7 +8,9 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 
  Create a Purpose and say how much it'll cost to persue that purpose. 
  Maybe your purpose is providing a service or public good, maybe it's being a YouTuber, engineer, or artist -- or anything else.
- Anyone with your address can help sustain your purpose, and once you're sustainable any additional contributions are redistributed back your sustainers.
+ Anyone with your address can help sustain your purpose, and once you're sustainable any additional contributions are redistributed back your sustainers and those you depend on.
+ 
+ Each Purpose is like a tier of the fountain, and the predefined cost to pursue the purpose is like the volume of that tier's pool.
 
  Your Purpose could be personal, or it could be managed by an address controlled by a community or business. 
  Either way, an address can only be associated with one active Purpose at a time, and one queued up for when the active one expires.
@@ -19,7 +21,7 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
  You can withdraw funds of yours from the sustainers pool (where surplus is distributed) or the sustainability pool (where sustainments are kept) at anytime.
 
 */
-contract Sustainers {
+contract Fountain {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
