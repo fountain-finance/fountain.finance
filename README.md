@@ -17,7 +17,7 @@ Fountain is a smart contract that provides a new internet business model for fun
 
 The thesis here is that the cost to develop, run, grow, and maintain global-scale software projects has become more and more predictable as we've abstracted and automated away complexity and variability behind cloud computing service providers and Ethereum. Meanwhile Twitter and GitHub allow a project's contributers and its community to exchange ideas and earn one others' trust more collaboratively, authentically, and iteratively. 
 
-Leaning heavily on the contributer <==> community relationship and community-driven growth, there's an opportunity for a mechanism that ensures each valued project's sustainability while pushing each individual community member's price towards zero as more people come on board. The Fountain contract does this by allowing projects to premptively publish what sustainability means to them for a specified time period, and redistributing surplus back to community members trustlessly.
+Leaning heavily on the contributer <==> community relationship and community-driven growth, there's an opportunity for a mechanism that ensures each valued project's sustainability while pushing each individual community member's price towards zero as more people come on board. The Fountain contract does this by allowing projects to premptively publish what sustainability means to them for a specified period of time, and redistributing surplus back to community members trustlessly.
 
 Ethereum also makes it easy for other smart contracts to integrate into the Fountain contract's functionality, which makes two neat things possible: 
 
