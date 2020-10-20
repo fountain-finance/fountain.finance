@@ -21,5 +21,5 @@ Leaning heavily on the developer <==> community relationship, there's an opportu
 
 Ethereum also makes it easy for other smart contracts to integrate into Fountain, which makes two important things possible. First, projects can route their income stream through this contract as a means of competing in the market. Second, it'll be easy to create sustainability dependencies, so a project's sustainability can be algorithmically hooked up to that of projects it depends on. 
 
-This mimics an overflowing fountain effect ⛲️ where a water stream directed at a top surface can end up overflowing the pools of each layer beneath, so long as the boundaries of the pools are defined ahead of time.  ️ 
+This mimics an overflowing fountain effect ⛲️ where a water stream directed at a top surface can end up overflowing the pools of each layer beneath, so long as the boundary of each pool is defined ahead of time.  ️ 
 
