@@ -23,7 +23,3 @@ Ethereum also makes it easy for other smart contracts to integrate into Fountain
 
 This mimics an overflowing fountain effect ⛲️ where a water stream directed at a top surface can end up overflowing the pools of each layer beneath, so long as the boundaries of the pools are defined ahead of time.  ️ 
 
-
-___
-
-This can also be useful for crowdsource fundraising.
