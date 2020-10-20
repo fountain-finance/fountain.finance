@@ -13,7 +13,7 @@
 
 ### Overview 
 
-Fountain is smart contract that provides a new internet business model for funding open source internet services, public goods, microfinance, indy projects, and just about any initiative where the cost of execution is periodically recurring and mostly predictable.
+Fountain is a smart contract that provides a new internet business model for funding open source internet services, public goods, microfinance, indy projects, and just about any initiative where the cost of execution is periodically recurring and mostly predictable.
 
 The thesis here is that the cost to develop, run, grow, and maintain global-scale software projects has become more and more predictable as we've abstracted and automated away complexity and variability behind cloud computing service providers and Ethereum. Meanwhile Twitter and GitHub allow a project's contributers and its community to exchange ideas and earn one others' trust more collaboratively, authentically, and iteratively. 
 
