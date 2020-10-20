@@ -15,7 +15,7 @@
 
 Fountain is a new internet business model for funding open source internet services, public goods, microfinance, indy projects, and just about any initiative where the cost of execution is periodically recurring and mostly predictable.
 
-The thesis here is that the cost to develop, run, grow, and maintain global-scale software projects has become more and more predictable as we've abstracted and automated away complexity and variability behind cloud computing service providers and Ethereum. Meanwhile Twitter and GitHub allow a project's contributer and its community to exchange ideas and earn one others' trust more collaboratively, authentically, and iteratively. 
+The thesis here is that the cost to develop, run, grow, and maintain global-scale software projects has become more and more predictable as we've abstracted and automated away complexity and variability behind cloud computing service providers and Ethereum. Meanwhile Twitter and GitHub allow a project's contributers and its community to exchange ideas and earn one others' trust more collaboratively, authentically, and iteratively. 
 
 Leaning heavily on the contributer <==> community relationship and community-driven growth, there's an opportunity for a mechanism that ensures each valued project's sustainability while pushing each individual community member's price towards zero as more people come on board. The Fountain contract does this by allowing projects to premptively publish what sustainability means to them for a specified duration, and redistributing surplus back to community members trustlessly.
 
