@@ -27,4 +27,4 @@ Ethereum also makes it easy for other smart contracts to integrate into the Foun
 
 ### TODO 
 
-This contract still needs to be revised and deployed, and the proposed game theory should be further discussed and critiqued.
+This contract still needs to be revised and deployed, and the proposed game theory should be further discussed, critiqued, and tested in production.
