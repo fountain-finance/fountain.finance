@@ -25,3 +25,6 @@ Ethereum also makes it easy for other smart contracts to integrate into the Foun
 
 2. It'll be easy to create sustainability dependencies, so a project's sustainability can be algorithmically hooked up to that of projects it depends on. This mimics an overflowing fountain effect ⛲️ where a water stream directed at a top surface can end up overflowing the pools of each layer beneath, so long as the boundary of each pool is defined ahead of time.  ️ 
 
+### TODO 
+
+This contract still needs to be revised and deployed, and the proposed game theory should be further discussed and critiqued.
