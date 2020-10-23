@@ -36,22 +36,23 @@ contract Fountain {
         // The amount that represents sustainability for this purpose.
         uint256 sustainabilityTarget;
         // The running amount that's been contributed to sustaining this purpose.
-        uint256 sustainment;
+        uint256 currentSustainment;
         // The time when this Purpose will become active.
         uint256 start;
-        // The number of days this Purpose can be sustained for according to `sustainabilityTarget`.
+        // The number of days until this Purpose's redistribution is added to the redistributionPool.
         uint256 duration;
         // The addresses who have helped to sustain this purpose.
         address[] sustainers;
         // The amount each address has contributed to the sustaining of this purpose.
-        mapping(address => uint256) sustainments;
-        // The amount that has been redistributed to each address as a consequence of abundant sustainment of this Purpose.
-        mapping(address => uint256) redistribution;
+        mapping(address => uint256) sustainmentTracker;
+        // The amount that will be redistributed to each address as a
+        // consequence of abundant sustainment of this Purpose once it resolves.
+        mapping(address => uint256) redistributionTracker;
         // Helper to verify this Purpose exists.
         bool exists;
     }
 
-    enum Pool {SUSTAINERS, SUSTAINABILITY}
+    enum Pool {REDISTRIBUTION, SUSTAINABILITY}
 
     // The current Purposes, which are immutable once the Purpose receives some sustainment.
     mapping(address => Purpose) currentPurposes;
@@ -59,8 +60,11 @@ contract Fountain {
     // The next Purposes, which are entirely mutable until they becomes the current Purpose.
     mapping(address => Purpose) nextPurposes;
 
-    // The amount that has been redistributed to each address as a consequence of overall abundance.
-    mapping(address => uint256) sustainersPool;
+    // The purposes which have not redistributed surplus funds yet.
+    Purpose[] lockedPurposes;
+
+    // The amount that has been redistributed to each address as a consequence of surplus.
+    mapping(address => uint256) redistributionPool;
 
     // The funds that have accumulated to sustain each address's Purposes.
     mapping(address => uint256) sustainabilityPool;
@@ -105,11 +109,13 @@ contract Fountain {
         )
     {
         Purpose storage purpose = currentPurposes[_who];
-        total = purpose.sustainments[msg.sender];
-        net = purpose.sustainments[msg.sender].sub(
-            purpose.redistribution[msg.sender]
+        total = purpose.sustainmentTracker[msg.sender];
+        net = purpose.sustainmentTracker[msg.sender].sub(
+            purpose.redistributionTracker[msg.sender]
         );
-        share = purpose.sustainments[msg.sender].div(purpose.sustainment);
+        share = purpose.sustainmentTracker[msg.sender].div(
+            purpose.currentSustainment
+        );
         purposeId = purpose.id;
     }
 
@@ -152,6 +158,8 @@ contract Fountain {
         purpose.sustainabilityTarget = _sustainabilityTarget;
         purpose.duration = _duration;
         purpose.want = DAI;
+        purpose.exists = true;
+        purpose.locked = true;
 
         emit PurposeCreated(
             numPurposes,
@@ -178,8 +186,10 @@ contract Fountain {
         );
 
         // If the current time is greater than the current Purpose's endTime, make the next Purpose the current Purpose if one exists.
+        // If there is no next purpose, close the current purpose.
         if (now > currentPurpose.start + (currentPurpose.duration * 1 days)) {
-            Purpose storage nextPurpose = nextPurposes[_who];
+            Purpose storage nextPurpose = nextPurposes[_who] ||
+                clonePurpose(currentPurpose);
             currentPurpose = nextPurpose;
             sustainActivePurpose(_who, _amount);
             return;
@@ -188,16 +198,17 @@ contract Fountain {
         // The amount that should be reserved for the Purpose.
         uint256 amountToAllocateToPurpose = currentPurpose
             .sustainabilityTarget
-            .sub(currentPurpose.sustainment) > _amount
+            .sub(currentPurpose.currentSustainment) > _amount
             ? _amount
             : currentPurpose.sustainabilityTarget.sub(
-                currentPurpose.sustainment
+                currentPurpose.currentSustainment
             );
 
         // Save if the message sender is contributing to this Purpose for the first time.
-        bool isNewSustainer = currentPurpose.sustainments[msg.sender] == 0;
+        bool isNewSustainer = currentPurpose.sustainmentTracker[msg.sender] ==
+            0;
         // Save if the purpose is sustainable before operating on its state.
-        bool wasSustainable = currentPurpose.sustainment >=
+        bool wasSustainable = currentPurpose.currentSustainment >=
             currentPurpose.sustainabilityTarget;
 
         // Move the full sustainment amount to this address.
@@ -209,21 +220,23 @@ contract Fountain {
         );
 
         // Increment the sustainments to the Purpose made by the message sender.
-        currentPurpose.sustainments[msg.sender] = currentPurpose
-            .sustainments[msg.sender]
+        currentPurpose.sustainmentTracker[msg.sender] = currentPurpose
+            .sustainmentTracker[msg.sender]
             .add(_amount);
         // Increment the total amount contributed to the sustainment of the Purpose.
-        currentPurpose.sustainment = currentPurpose.sustainment.add(_amount);
+        currentPurpose.currentSustainment = currentPurpose.sustainment.add(
+            _amount
+        );
         // Add the message sender as a sustainer of the Purpose if this is the first sustainment it's making to it.
         if (isNewSustainer) {
             currentPurpose.sustainers.push(msg.sender);
         }
 
         // Save the amount to distribute before changing the state.
-        uint256 surplus = currentPurpose.sustainment <=
+        uint256 surplus = currentPurpose.currentSustainment <=
             currentPurpose.sustainabilityTarget
             ? 0
-            : currentPurpose.sustainment.sub(
+            : currentPurpose.currentSustainment.sub(
                 currentPurpose.sustainabilityTarget
             );
 
@@ -239,7 +252,8 @@ contract Fountain {
         emit PurposeSustained(currentPurpose.id, msg.sender, _amount);
         if (
             !wasSustainable &&
-            currentPurpose.sustainment >= currentPurpose.sustainabilityTarget
+            currentPurpose.currentSustainment >=
+            currentPurpose.sustainabilityTarget
         ) {
             emit PurposeBecameSustainable(
                 currentPurpose.id,
@@ -248,16 +262,21 @@ contract Fountain {
         }
     }
 
-    // A message sender can withdraw what's been redistributed to it.
-    function withdrawFromSustainersPool(uint256 _amount) public {
+    // A message sender can withdraw what's been redistributed to it by a Purpose once it's expired.
+    function withdrawFromRedistributionPool(uint256 _amount) public {
+        updateRedistributionPool();
+
+        // Check to see if there are any expired purposes that need to be unlocked.
         require(
-            sustainersPool[msg.sender] >= _amount,
+            redistributionPool[msg.sender] >= _amount,
             "You don't have enough to withdraw this much."
         );
 
         DAI.safeTransferFrom(address(this), msg.sender, _amount);
 
-        sustainersPool[msg.sender] = sustainersPool[msg.sender].sub(_amount);
+        redistributionPool[msg.sender] = redistributionPool[msg.sender].sub(
+            _amount
+        );
 
         emit Withdraw(msg.sender, Pool.SUSTAINERS, _amount);
     }
@@ -287,7 +306,7 @@ contract Fountain {
         require(currentPurposes[_who].exists, "You don't yet have a purpose.");
 
         // If the address's current Purpose does not yet have sustainments, return it.
-        if (currentPurposes[_who].sustainment == 0) {
+        if (currentPurposes[_who].currentSustainment == 0) {
             return currentPurposes[_who];
         }
 
@@ -295,6 +314,7 @@ contract Fountain {
         if (!nextPurposes[_who].exists) {
             Purpose storage purpose = nextPurposes[_who];
             purpose.exists = true;
+            purpose.locked = true;
             return purpose;
         }
 
@@ -314,25 +334,75 @@ contract Fountain {
     // Proportionally allocate the specified amount to the contributors of the specified Purpose,
     // meaning each sustainer will receive a portion of the specified amount equivalent to the portion of the total
     // amount contributed to the sustainment of the Purpose that they are responsible for.
-    function redistribute(Purpose storage _purpose, uint256 _amount) private {
+    function redistribute(Purpose storage _purpose) private {
         assert(_amount > 0);
 
-        // For each sustainer, calculate their share of the sustainment and allocate a proportional share of the amount.
+        uint256 surplus = _purpose.sustainabilityTarget.sub(
+            _purpose.currentSustainment
+        );
+
+        // For each sustainer, calculate their share of the sustainment and
+        // allocate a proportional share of the surplus, overwriting any previous value.
         for (uint256 i = 0; i < _purpose.sustainers.length; i++) {
             address sustainer = _purpose.sustainers[i];
-            uint256 amountShare = (
-                _purpose.sustainments[sustainer].mul(_amount)
-            )
-                .div(_purpose.sustainment);
-            //Store the reditribution in the Purpose.
-            _purpose.redistribution[sustainer] = _purpose
-                .redistribution[sustainer]
-                .add(amountShare);
+
+            uint256 currentSustainmentProportion = _purpose
+                .sustainmentTracker[sustainer]
+                .div(_purpose.currentSustainment);
+
+            uint256 sustainerSurplusShare = surplus.mul(
+                currentSustainmentProportion
+            );
+
+            //Store the updated redistribution in the Purpose.
+            _purpose.redistributionTracker[sustainer] = sustainerSurplusShare;
 
             //Store the redistribution in the sustainers pool.
-            sustainersPool[sustainer] = sustainersPool[sustainer].add(
+            redistributionPool[sustainer] = redistributionPool[sustainer].add(
                 amountShare
             );
         }
+    }
+
+    // Check to see if there are any locked purposes that have expired.
+    // If so, unlock
+    function updateRedistributionPool() private {
+        Purpose[] updatedLockedPurposes = [];
+        for (uint256 i = 0; i < lockedPurposes.length; i++) {
+            Purpose storage lockedPurpose = lockedPurposes[i];
+            if (now > lockedPurpose.start + (lockedPurpose.duration * 1 days)) {
+                unlockPurpose(lockedPurpose);
+            } else {
+                updatedLockedPurposes.push(lockedPurposes);
+            }
+        }
+        lockedPurposes = updatedLockedPurposes;
+    }
+
+    // Take any tracked redistribution in the given purpose and add them to the redistribution pool.
+    function unlockPurpose(Purpose storage purpose) private {
+        for (uint256 i = 0; i < purpose.sustainers.length; i++) {
+            address sustainer = _purpose.sustainers[i];
+            redistributionPool[sustainer] = redistributionPool[sustainer].add(
+                purpose.redistributionTracker[sustainer]
+            );
+        }
+    }
+
+    function clonePurpose(Purpose memory from)
+        internal
+        pure
+        returns (Purpose memory)
+    {
+        return
+            Purpose(
+                numPurposes,
+                from.who,
+                from.want,
+                from.sustainabilityTarget,
+                from.currentSustainment,
+                now,
+                from.duration
+            );
     }
 }
