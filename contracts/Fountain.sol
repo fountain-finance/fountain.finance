@@ -1,30 +1,30 @@
-pragma solidity >=0.4.25 <0.7.0;
+pragma solidity >=0.4.25 <0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
-/** 
+/**
 
  @title Fountain
 
- Create a Purpose and say how much it'll cost to persue that purpose. 
+ Create a Purpose and say how much it'll cost to persue that purpose.
  Maybe your Purpose is providing a service or public good, maybe it's being a YouTuber, engineer, or artist -- or anything else.
- Anyone with your address can help sustain your Purpose, and 
+ Anyone with your address can help sustain your Purpose, and
  once you're sustainable any additional contributions are redistributed back your sustainers and those you depend on.
- 
+
  Each Purpose is like a tier of the fountain, and the predefined cost to pursue the purpose is like the bounds of that tier's pool.
 
- Your Purpose could be personal, or it could be managed by an address controlled by a community or business. 
+ Your Purpose could be personal, or it could be managed by an address controlled by a community or business.
  Either way, an address can only be associated with one active Purpose at a time, and one queued up for when the active one expires.
 
  If a Purpose expires without one queued, the current one will be cloned and sustainments will be allocated to it.
 
- To avoid abuse, it's impossible for a Purpose's sustainability or duration to be changed once there has been a sustainment made to it. 
+ To avoid abuse, it's impossible for a Purpose's sustainability or duration to be changed once there has been a sustainment made to it.
  Any attempts to do so will just create/update the message sender's queued purpose.
 
  You can withdraw funds of yours from the sustainers pool (where surplus is distributed) or the sustainability pool (where sustainments are kept) at anytime.
-  
+
 */
 contract Fountain {
     using SafeMath for uint256;
@@ -118,7 +118,8 @@ contract Fountain {
         purpose.duration = d;
         purpose.want = DAI;
         purpose.exists = true;
-        purpose.locked = true;
+        // TODO
+        // purpose.locked = true;
 
         emit PurposeCreated(numPurposes, msg.sender, t, d, DAI);
 
@@ -127,10 +128,8 @@ contract Fountain {
 
     /// @dev Contribute a specified amount to the sustainability of the specified address's active Purpose.
     /// @dev If the amount results in surplus, redistribute the surplus proportionally to sustainers of the Purpose.
-    /// @param w Width of the rectangle.
-    /// @param h Height of the rectangle.
-    /// @return s The calculated surface.
-    /// @return p The calculated perimeter.
+    /// @param w Address to sustain.
+    /// @param a Amount of sustainment.
     function sustain(address w, uint256 a) external {
         require(a > 0, "The sustainment amount should be positive.");
 
@@ -146,29 +145,29 @@ contract Fountain {
         // current Purpose if one exists.
         // If there is no next purpose, clone the current purpose.
         if (isPurposeExpired(currentPurpose)) {
-            if (nextPurposes[w].exists)
-                Purpose storage nextPurpose = nextPurposes[w];
+            Purpose storage nextPurpose;
+            if (nextPurposes[w].exists) nextPurpose = nextPurposes[w];
             else {
-                Purpose storage nextPurpose = nextPurposeFromPurpose(
-                    currentPurpose
-                );
+                nextPurpose = nextPurposeFromPurpose(currentPurpose);
             }
             currentPurpose = nextPurpose;
 
-            /* 
+            /*
 
             Recurse since now there is a current Purpose.
 
             The worst case could be pretty brutal since the new Purpose
             may also be expired. If the Purpose duration is the minimimum of one day,
-            this will recurse for each day since the last Purpose was interacted with, 
+            this will recurse for each day since the last Purpose was interacted with,
             which theoretically could be millenia.
 
             I can't imagine a situation where this recursion would ever be
             expensive given the use cases of the contract.
 
             */
-            sustain(w, a);
+            // TODO: Recursion like this doesn't work. Compiler error:
+            // Undeclared identifier. "sustain" is not (or not yet) visible at this point.
+            // sustain(w, a);
             return;
         }
 
@@ -195,9 +194,7 @@ contract Fountain {
         DAI.transferFrom(msg.sender, address(this), a);
 
         // Increment the funds that can withdrawn for sustainability.
-        sustainabilityPool[_who] = sustainabilityPool[_who].add(
-            sustainabilityAmount
-        );
+        sustainabilityPool[w] = sustainabilityPool[w].add(sustainabilityAmount);
 
         // Increment the sustainments to the Purpose made by the message sender.
         currentPurpose.sustainmentTracker[msg.sender] = currentPurpose
@@ -205,7 +202,9 @@ contract Fountain {
             .add(a);
 
         // Increment the total amount contributed to the sustainment of the Purpose.
-        currentPurpose.currentSustainment = currentPurpose.sustainment.add(a);
+        currentPurpose.currentSustainment = currentPurpose
+            .currentSustainment
+            .add(a);
 
         // Add the message sender as a sustainer of the Purpose if this is the first sustainment it's making to it.
         if (isNewSustainer) currentPurpose.sustainers.push(msg.sender);
@@ -233,7 +232,7 @@ contract Fountain {
 
         redistributionPool[msg.sender] = redistributionPool[msg.sender].sub(a);
 
-        emit Withdraw(msg.sender, Pool.SUSTAINERS, a);
+        emit Withdrawn(msg.sender, Pool.SUSTAINABILITY, a);
     }
 
     /// @dev A message sender can withdrawl funds that have been used to sustain it's Purposes.
@@ -248,7 +247,7 @@ contract Fountain {
 
         sustainabilityPool[msg.sender] = sustainabilityPool[msg.sender].sub(a);
 
-        emit Withdraw(msg.sender, Pool.SUSTAINABILITY, a);
+        emit Withdrawn(msg.sender, Pool.SUSTAINABILITY, a);
     }
 
     /// @dev Updates the sustainability target and duration of the sender's current Purpose if it hasn't yet received sustainments, or
@@ -260,8 +259,8 @@ contract Fountain {
         uint256 d // address _want
     ) external {
         Purpose storage purpose = purposeToUpdate(msg.sender);
-        if (t > 0) purpose.sustainabilityTarget = _sustainabilityTarget;
-        if (d > 0) purpose.duration = _duration;
+        if (t > 0) purpose.sustainabilityTarget = t;
+        if (d > 0) purpose.duration = d;
         purpose.want = DAI; //IERC20(_want);
     }
 
@@ -281,7 +280,7 @@ contract Fountain {
                 currentPurposes[w]
             );
             nextPurposes[w] = nextPurpose;
-            return purpose;
+            return nextPurpose;
         }
 
         // Return the address's next Purpose.
@@ -319,7 +318,11 @@ contract Fountain {
     /// @dev Check to see if there are any locked purposes that have expired.
     /// @dev If so, unlock them by removing them from the lockedPurposes array.
     function updateRedistributionPool() private {
-        Purpose[] storage updatedLockedPurposes = [];
+        // TODO: Need to use an array in storage because it is not possible to resize memory arrays
+        // Otherwise need to define the size of the array during initialization
+        // Compiler error: Unable to deduce common type for array elements.
+        // See: https://ethereum.stackexchange.com/questions/11533/how-to-initialize-an-empty-array-and-push-items-into-it
+        Purpose[] storage updatedLockedPurposes = []; // TODO error on this line
         for (uint256 i = 0; i < lockedPurposes.length; i++) {
             Purpose storage lockedPurpose = lockedPurposes[i];
             if (isPurposeExpired(lockedPurpose)) unlockPurpose(lockedPurpose);
@@ -339,10 +342,10 @@ contract Fountain {
     /// @dev add them to the redistribution pool.
     /// @param p The Purpose to unlock.
     function unlockPurpose(Purpose storage p) private {
-        for (uint256 i = 0; i < purpose.sustainers.length; i++) {
-            address sustainer = _purpose.sustainers[i];
+        for (uint256 i = 0; i < p.sustainers.length; i++) {
+            address sustainer = p.sustainers[i];
             redistributionPool[sustainer] = redistributionPool[sustainer].add(
-                purpose.redistributionTracker[sustainer]
+                p.redistributionTracker[sustainer]
             );
         }
     }
@@ -353,15 +356,18 @@ contract Fountain {
         private
         returns (Purpose storage)
     {
+        // TODO: Compiler Error:
+        // Type struct Fountain.Purpose memory is not implicitly convertible to expected type struct Fountain.Purpose storage pointer.
         Purpose storage purpose = Purpose(
             numPurposes,
             p.who,
             p.want,
             p.sustainabilityTarget,
             0,
-            p.start.add(from.duration.mul(1 days)),
+            p.start.add(p.duration.mul(1 days)),
             p.duration,
             true
+            // TODO not enough arguments
         );
 
         numPurposes.add(1);
