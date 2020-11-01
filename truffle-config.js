@@ -1,10 +1,10 @@
 module.exports = {
   compilers: {
     solc: {
-      version: "0.6.2"
-    }
-  }
-  // Uncommenting the defaults below 
+      version: "0.6.6+commit.6c089d02",
+    },
+  },
+  // Uncommenting the defaults below
   // provides for an easier quick-start with Ganache.
   // You can also follow this format for other networks;
   // see <http://truffleframework.com/docs/advanced/configuration>
