@@ -75,6 +75,9 @@ contract Fountain {
     /// @notice The latest purpose for each owner
     mapping(address => uint256) public latestPurposeIds;
 
+    /// @notice List of addresses sustained by each sustainer
+    mapping(address => address[]) sustainedAddressesBySustainer;
+
     // TODO: Storing and iterating arrays in state is not going to work
     // see https://ethereum.stackexchange.com/a/27535
     // Instead redistribution status is checked and redistribution takes place
@@ -161,10 +164,6 @@ contract Fountain {
             "Fountain::sustain: The sustainment amount should be positive"
         );
 
-        // Make sure all available redistributions have been completed for
-        // the purpose
-        redistributePurpose(w);
-
         uint256 purposeId = purposeIdToSustain(w);
         Purpose storage currentPurpose = purposes[purposeId];
 
@@ -208,6 +207,9 @@ contract Fountain {
         // Add the message sender as a sustainer of the Purpose if this is the first sustainment it's making to it.
         if (isNewSustainer) currentPurpose.sustainers.push(msg.sender);
 
+        // Add this address to the sustainer's list of sustained addresses
+        sustainedAddressesBySustainer[msg.sender].push(w);
+
         // Redistribution amounts may have changed for the current Purpose.
         updateTrackedRedistribution(currentPurpose);
 
@@ -219,12 +221,13 @@ contract Fountain {
     /// @dev Note that funds may not have been fully redistributed and calling this does not redistribute. Calls to withdrawFromSustainabilityPool, sustain, and updatePurpose with trigger a redistribution only for the purpose they are called upon.
     /// @param a The amount to withdraw.
     function withdrawFromRedistributionPool(uint256 a) external {
-        // TODO: This won't work. Storing an array in storage and iterating
-        // elements is prohibitively expensive. And I was having troubles even
-        // getting something to compile.
-        // // Before withdrawing, make sure any expired Purposes' trackedRedistribution
-        // // has been added to the redistribution pool.
-        // updateRedistributionPool();
+        // Iterate over all of sender's sustained addresses to make sure
+        // redistribution has completed for all redistributable purposes
+        address[] storage sustainedAddresses = sustainedAddressesBySustainer[msg
+            .sender];
+        for (uint256 i = 0; i < sustainedAddresses.length; i++) {
+            redistributePurpose(sustainedAddresses[i]);
+        }
 
         require(
             redistributionPool[msg.sender] >= a,
@@ -241,10 +244,6 @@ contract Fountain {
     /// @dev A message sender can withdrawl funds that have been used to sustain it's Purposes.
     /// @param a The amount to withdraw.
     function withdrawFromSustainabilityPool(uint256 a) external {
-        // Make sure all available redistributions have been completed for
-        // the sender's purpose
-        redistributePurpose(msg.sender);
-
         require(
             sustainabilityPool[msg.sender] >= a,
             "This address doesn't have enough to withdraw this much."
@@ -265,9 +264,6 @@ contract Fountain {
         uint256 t,
         uint256 d // address _want
     ) external {
-        // Make sure all available redistributions have been completed for
-        // the sender's purpose
-        redistributePurpose(msg.sender);
         uint256 purposeId = purposeIdToUpdate(msg.sender);
         Purpose storage purpose = purposes[purposeId];
         if (t > 0) purpose.sustainabilityTarget = t;
