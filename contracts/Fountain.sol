@@ -130,7 +130,7 @@ contract Fountain {
             "Fountain::createPurpose: A purpose must be at least one day long"
         );
 
-        purposeCount.add(1);
+        purposeCount++;
         // Must create structs that have mappings using this approach to avoid
         // the RHS creating a memory-struct that contains a mapping.
         // See https://ethereum.stackexchange.com/a/72310
@@ -429,7 +429,7 @@ contract Fountain {
             "Fountain::createPurposeFromId: Invalid purpose"
         );
 
-        purposeCount.add(1);
+        purposeCount++;
         // Must create structs that have mappings using this approach to avoid
         // the RHS creating a memory-struct that contains a mapping.
         // See https://ethereum.stackexchange.com/a/72310
