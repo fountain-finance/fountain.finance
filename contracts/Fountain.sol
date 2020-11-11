@@ -31,11 +31,11 @@ contract Fountain {
     using SafeERC20 for IERC20;
 
     /// @notice Possible states that a Purpose may be in
-    // immutable once the Purpose receives some sustainment.
-    // entirely mutable until they become active.
+    /// @dev immutable once the Purpose receives some sustainment.
+    /// @dev entirely mutable until they become active.
     enum PurposeState {Pending, Active, Redistributing}
 
-    // The Purpose structure represents a purpose stewarded by an address, and accounts for which addresses have contributed to it.
+    /// @notice The Purpose structure represents a purpose stewarded by an address, and accounts for which addresses have contributed to it.
     struct Purpose {
         // A unique ID for this purpose.
         uint256 id;
@@ -58,7 +58,7 @@ contract Fountain {
         // Indicates if surplus funds have been redistributed
         bool redistributed;
         // The addresses who have helped to sustain this purpose.
-        // FIXME: Using arrays appears to be bad practice and can be expensive
+        // NOTE: Using arrays may be bad practice and/or expensive
         address[] sustainers;
         // The amount each address has contributed to the sustaining of this purpose.
         mapping(address => uint256) sustainmentTracker;
@@ -77,14 +77,6 @@ contract Fountain {
 
     /// @notice List of addresses sustained by each sustainer
     mapping(address => address[]) sustainedAddressesBySustainer;
-
-    // TODO: Storing and iterating arrays in state is not going to work
-    // see https://ethereum.stackexchange.com/a/27535
-    // Instead redistribution status is checked and redistribution takes place
-    // if needed each time a purpose is interacted with (sustain, updatePurpose,
-    // withdrawFromSustainabilityPool)
-    // // The purpose ids which have not redistributed surplus funds yet.
-    // uint256[] lockedPurposeIds;
 
     // The amount that has been redistributed to each address as a consequence of surplus.
     mapping(address => uint256) redistributionPool;
@@ -120,7 +112,7 @@ contract Fountain {
         purposeCount = 0;
     }
 
-    /// @dev Creates a Purpose to be sustained for the sending address.
+    /// @notice Creates a Purpose to be sustained for the sending address.
     /// @param t The sustainability target for the Purpose, in DAI.
     /// @param d The duration of the Purpose, which starts once this is created.
     function createPurpose(uint256 t, uint256 d) external {
@@ -154,8 +146,8 @@ contract Fountain {
         emit PurposeCreated(newPurpose.id, msg.sender, t, d, DAI);
     }
 
-    /// @dev Contribute a specified amount to the sustainability of the specified address's active Purpose.
-    /// @dev If the amount results in surplus, redistribute the surplus proportionally to sustainers of the Purpose.
+    /// @notice Contribute a specified amount to the sustainability of the specified address's active Purpose.
+    /// @notice If the amount results in surplus, redistribute the surplus proportionally to sustainers of the Purpose.
     /// @param w Address to sustain.
     /// @param a Amount of sustainment.
     function sustain(address w, uint256 a) external {
@@ -217,8 +209,7 @@ contract Fountain {
         emit PurposeSustained(currentPurpose.id, msg.sender, a);
     }
 
-    /// @dev A message sender can withdraw what's been redistributed to it by a Purpose once it's expired.
-    /// @dev Note that funds may not have been fully redistributed and calling this does not redistribute. Calls to withdrawFromSustainabilityPool, sustain, and updatePurpose with trigger a redistribution only for the purpose they are called upon.
+    /// @notice A message sender can withdraw what's been redistributed to it by a Purpose once it's expired.
     /// @param a The amount to withdraw.
     function withdrawFromRedistributionPool(uint256 a) external {
         // Iterate over all of sender's sustained addresses to make sure
@@ -241,7 +232,7 @@ contract Fountain {
         emit Withdrawn(msg.sender, Pool.SUSTAINABILITY, a);
     }
 
-    /// @dev A message sender can withdrawl funds that have been used to sustain it's Purposes.
+    /// @notice A message sender can withdrawl funds that have been used to sustain it's Purposes.
     /// @param a The amount to withdraw.
     function withdrawFromSustainabilityPool(uint256 a) external {
         require(
@@ -256,8 +247,8 @@ contract Fountain {
         emit Withdrawn(msg.sender, Pool.SUSTAINABILITY, a);
     }
 
-    /// @dev Updates the sustainability target and duration of the sender's current Purpose if it hasn't yet received sustainments, or
-    /// @dev sets the properties of the Purpose that will take effect once the current Purpose expires.
+    /// @notice Updates the sustainability target and duration of the sender's current Purpose if it hasn't yet received sustainments, or
+    /// @notice sets the properties of the Purpose that will take effect once the current Purpose expires.
     /// @param t The sustainability target to set.
     /// @param d The duration to set.
     function updatePurpose(
@@ -282,8 +273,6 @@ contract Fountain {
         }
 
         // Cannot update active purpose, check if there is a pending purpose
-        // TODO: Is it possible to have an active purpose that hasn't been
-        // sustained as well as a pending purpose?
         purposeId = getPendingPurposeId(w);
         if (purposeId != 0) {
             return purposeId;
@@ -293,11 +282,11 @@ contract Fountain {
         purposeId = getLatestPurposeId(w);
         Purpose storage purpose = createPurposeFromId(purposeId);
         purposes[purpose.id] = purpose;
-        latestPurposeIds[purpose.who] = purpose.id;
+        latestPurposeIds[w] = purpose.id;
         return purpose.id;
     }
 
-    /// @dev Only active or pending Purposes can be sustained. TODO Is this true?
+    /// @dev Only active Purposes can be sustained.
     /// @param w The address to find a Purpose for.
     function purposeIdToSustain(address w) private returns (uint256) {
         // Check if there is an active purpose
@@ -316,7 +305,7 @@ contract Fountain {
         purposeId = getLatestPurposeId(w);
         Purpose storage purpose = createPurposeFromId(purposeId);
         purposes[purpose.id] = purpose;
-        latestPurposeIds[purpose.who] = purpose.id;
+        latestPurposeIds[w] = purpose.id;
 
         return purpose.id;
     }
@@ -348,26 +337,6 @@ contract Fountain {
             p.redistributionTracker[sustainer] = sustainerSurplusShare;
         }
     }
-
-    // TODO Remove this, as it won't work.
-    // /// @dev Check to see if there are any locked purposes that have expired.
-    // /// @dev If so, unlock them by removing them from the lockedPurposes array.
-    // function updateRedistributionPool() private {
-    //     // TODO: Need to use an array in storage because it is not possible to resize memory arrays
-    //     // Otherwise need to define the size of the array during initialization
-    //     // Compiler error: Unable to deduce common type for array elements.
-    //     // See: https://ethereum.stackexchange.com/questions/11533/how-to-initialize-an-empty-array-and-push-items-into-it
-    //     Purpose[] memory updatedLockedPurposes = new Purpose[](
-    //         lockedPurposes.length
-    //     ); // TODO error on this line
-    //     for (uint256 i = 0; i < lockedPurposes.length; i++) {
-    //         Purpose storage lockedPurpose = lockedPurposes[i];
-    //         if (isPurposeExpired(lockedPurpose)) unlockPurpose(lockedPurpose);
-    //         else updatedLockedPurposes.push(lockedPurposes);
-    //     }
-    //     //TODO verify this way to manipulate array storage works.
-    //     lockedPurposes = updatedLockedPurposes;
-    // }
 
     /// @dev Check to see if the given Purpose has started.
     /// @param p The Purpose to check.
@@ -521,27 +490,6 @@ contract Fountain {
             return purposeId;
         }
         return 0;
-
-        // TODO Remove this once above logic is tested and working properly
-        // // uint256 count = 0;
-        // while (purposeId != 0 && state(purposeId) != PurposeState.Active) {
-        //     Purpose memory purpose = purposes(purposeId);
-        //     if (purpose.start + purpose.duration > now) {
-        //         // There is no active purpose when the current Purpose ends after
-        //         // now and is not currently active
-        //         return 0;
-        //     }
-        //     purposeId = purpose.previousPurposeId;
-        //     if (state(purposeId) == PurposeState.Redistributing) {
-        //         // There is no active purpose when the previous Purpose is in
-        //         // the Redistributing state
-        //         return 0;
-        //     }
-        //     // count.add(1);
-        //     // TODO: Confirm loop should never execute more than 2 times??
-        //     // assert(count < 2);
-        // }
-        // return purposeId;
     }
 
     // // Not yet used
