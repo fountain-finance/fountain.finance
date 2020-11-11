@@ -85,7 +85,7 @@ contract Fountain {
     mapping(address => uint256) sustainabilityPool;
 
     // The total number of Purposes created, which is used for issuing Purpose IDs.
-    // uint256 numPurposes;
+    // Purposes should have an id > 0, 0 should not be a purpose id.
     uint256 purposeCount;
 
     // The contract currently only supports sustainments in DAI.
@@ -412,9 +412,14 @@ contract Fountain {
         purpose.previousPurposeId = currentPurpose.id;
         purpose.redistributed = false;
 
-        // TODO: Should this emit PurposeCreated event? The callers of this will
-        // emit PurposeUpdated and PurposeSustained events, but those events
-        // don't indicate if a new Purpose was created.
+        emit PurposeCreated(
+            purpose.id,
+            purpose.who,
+            purpose.sustainabilityTarget,
+            purpose.duration,
+            DAI
+        );
+
         return purpose;
     }
 
