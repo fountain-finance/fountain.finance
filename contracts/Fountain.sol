@@ -99,6 +99,14 @@ contract Fountain {
         IERC20 want
     );
 
+    event PurposeUpdated(
+        uint256 indexed id,
+        address indexed by,
+        uint256 sustainabilityTarget,
+        uint256 duration,
+        IERC20 want
+    );
+
     event PurposeSustained(
         uint256 indexed id,
         address indexed sustainer,
@@ -260,6 +268,14 @@ contract Fountain {
         if (t > 0) purpose.sustainabilityTarget = t;
         if (d > 0) purpose.duration = d;
         purpose.want = DAI; //IERC20(_want);
+
+        emit PurposeUpdated(
+            purpose.id,
+            purpose.who,
+            purpose.sustainabilityTarget,
+            purpose.duration,
+            DAI
+        );
     }
 
     /// @dev The sustainability of a Purpose cannot be updated if there have been sustainments made to it.
@@ -412,7 +428,7 @@ contract Fountain {
         purpose.previousPurposeId = currentPurpose.id;
         purpose.redistributed = false;
 
-        emit PurposeCreated(
+        emit PurposeUpdated(
             purpose.id,
             purpose.who,
             purpose.sustainabilityTarget,
