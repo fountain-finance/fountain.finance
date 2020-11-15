@@ -1,0 +1,508 @@
+{
+	"compiler": {
+		"version": "0.6.6+commit.6c089d02"
+	},
+	"language": "Solidity",
+	"output": {
+		"abi": [
+			{
+				"inputs": [],
+				"stateMutability": "nonpayable",
+				"type": "constructor"
+			},
+			{
+				"anonymous": false,
+				"inputs": [
+					{
+						"indexed": true,
+						"internalType": "uint256",
+						"name": "id",
+						"type": "uint256"
+					},
+					{
+						"indexed": true,
+						"internalType": "address",
+						"name": "by",
+						"type": "address"
+					},
+					{
+						"indexed": false,
+						"internalType": "uint256",
+						"name": "sustainabilityTarget",
+						"type": "uint256"
+					},
+					{
+						"indexed": false,
+						"internalType": "uint256",
+						"name": "duration",
+						"type": "uint256"
+					},
+					{
+						"indexed": false,
+						"internalType": "contract IERC20",
+						"name": "want",
+						"type": "address"
+					}
+				],
+				"name": "PurposeCreated",
+				"type": "event"
+			},
+			{
+				"anonymous": false,
+				"inputs": [
+					{
+						"indexed": true,
+						"internalType": "uint256",
+						"name": "id",
+						"type": "uint256"
+					},
+					{
+						"indexed": true,
+						"internalType": "address",
+						"name": "sustainer",
+						"type": "address"
+					},
+					{
+						"indexed": false,
+						"internalType": "uint256",
+						"name": "amount",
+						"type": "uint256"
+					}
+				],
+				"name": "PurposeSustained",
+				"type": "event"
+			},
+			{
+				"anonymous": false,
+				"inputs": [
+					{
+						"indexed": true,
+						"internalType": "uint256",
+						"name": "id",
+						"type": "uint256"
+					},
+					{
+						"indexed": true,
+						"internalType": "address",
+						"name": "by",
+						"type": "address"
+					},
+					{
+						"indexed": false,
+						"internalType": "uint256",
+						"name": "sustainabilityTarget",
+						"type": "uint256"
+					},
+					{
+						"indexed": false,
+						"internalType": "uint256",
+						"name": "duration",
+						"type": "uint256"
+					},
+					{
+						"indexed": false,
+						"internalType": "contract IERC20",
+						"name": "want",
+						"type": "address"
+					}
+				],
+				"name": "PurposeUpdated",
+				"type": "event"
+			},
+			{
+				"anonymous": false,
+				"inputs": [
+					{
+						"indexed": true,
+						"internalType": "address",
+						"name": "by",
+						"type": "address"
+					},
+					{
+						"indexed": true,
+						"internalType": "enum Fountain.Pool",
+						"name": "from",
+						"type": "uint8"
+					},
+					{
+						"indexed": false,
+						"internalType": "uint256",
+						"name": "amount",
+						"type": "uint256"
+					}
+				],
+				"name": "Withdrawn",
+				"type": "event"
+			},
+			{
+				"inputs": [],
+				"name": "DAI",
+				"outputs": [
+					{
+						"internalType": "contract IERC20",
+						"name": "",
+						"type": "address"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "uint256",
+						"name": "t",
+						"type": "uint256"
+					},
+					{
+						"internalType": "uint256",
+						"name": "d",
+						"type": "uint256"
+					}
+				],
+				"name": "createPurpose",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "w",
+						"type": "address"
+					}
+				],
+				"name": "getDuration",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "w",
+						"type": "address"
+					}
+				],
+				"name": "getSustainabilityTarget",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "",
+						"type": "address"
+					}
+				],
+				"name": "latestPurposeIds",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "owner",
+				"outputs": [
+					{
+						"internalType": "address",
+						"name": "",
+						"type": "address"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "purposeCount",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"name": "purposes",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "id",
+						"type": "uint256"
+					},
+					{
+						"internalType": "address",
+						"name": "who",
+						"type": "address"
+					},
+					{
+						"internalType": "contract IERC20",
+						"name": "want",
+						"type": "address"
+					},
+					{
+						"internalType": "uint256",
+						"name": "sustainabilityTarget",
+						"type": "uint256"
+					},
+					{
+						"internalType": "uint256",
+						"name": "currentSustainment",
+						"type": "uint256"
+					},
+					{
+						"internalType": "uint256",
+						"name": "start",
+						"type": "uint256"
+					},
+					{
+						"internalType": "uint256",
+						"name": "duration",
+						"type": "uint256"
+					},
+					{
+						"internalType": "bool",
+						"name": "exists",
+						"type": "bool"
+					},
+					{
+						"internalType": "uint256",
+						"name": "previousPurposeId",
+						"type": "uint256"
+					},
+					{
+						"internalType": "bool",
+						"name": "redistributed",
+						"type": "bool"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "w",
+						"type": "address"
+					},
+					{
+						"internalType": "uint256",
+						"name": "a",
+						"type": "uint256"
+					}
+				],
+				"name": "sustain",
+				"outputs": [],
+				"stateMutability": "payable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "",
+						"type": "address"
+					},
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"name": "sustainedAddressesBySustainer",
+				"outputs": [
+					{
+						"internalType": "address",
+						"name": "",
+						"type": "address"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "uint256",
+						"name": "t",
+						"type": "uint256"
+					},
+					{
+						"internalType": "uint256",
+						"name": "d",
+						"type": "uint256"
+					}
+				],
+				"name": "updatePurpose",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "uint256",
+						"name": "a",
+						"type": "uint256"
+					}
+				],
+				"name": "withdrawFromRedistributionPool",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "uint256",
+						"name": "a",
+						"type": "uint256"
+					}
+				],
+				"name": "withdrawFromSustainabilityPool",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			}
+		],
+		"devdoc": {
+			"methods": {
+				"createPurpose(uint256,uint256)": {
+					"params": {
+						"d": "The duration of the Purpose, which starts once this is created.",
+						"t": "The sustainability target for the Purpose, in DAI."
+					}
+				},
+				"sustain(address,uint256)": {
+					"params": {
+						"a": "Amount of sustainment.",
+						"w": "Address to sustain."
+					}
+				},
+				"updatePurpose(uint256,uint256)": {
+					"params": {
+						"d": "The duration to set.",
+						"t": "The sustainability target to set."
+					}
+				},
+				"withdrawFromRedistributionPool(uint256)": {
+					"params": {
+						"a": "The amount to withdraw."
+					}
+				},
+				"withdrawFromSustainabilityPool(uint256)": {
+					"params": {
+						"a": "The amount to withdraw."
+					}
+				}
+			},
+			"title": "Fountain Create a Purpose and say how much it'll cost to persue that purpose. Maybe your Purpose is providing a service or public good, maybe it's being a YouTuber, engineer, or artist -- or anything else. Anyone with your address can help sustain your Purpose, and once you're sustainable any additional contributions are redistributed back your sustainers and those you depend on. Each Purpose is like a tier of the fountain, and the predefined cost to pursue the purpose is like the bounds of that tier's pool. Your Purpose could be personal, or it could be managed by an address controlled by a community or business. Either way, an address can only be associated with one active Purpose at a time, and one queued up for when the active one expires. If a Purpose expires without one queued, the current one will be cloned and sustainments will be allocated to it. To avoid abuse, it's impossible for a Purpose's sustainability or duration to be changed once there has been a sustainment made to it. Any attempts to do so will just create/update the message sender's queued purpose. You can withdraw funds of yours from the sustainers pool (where surplus is distributed) or the sustainability pool (where sustainments are kept) at anytime."
+		},
+		"userdoc": {
+			"methods": {
+				"createPurpose(uint256,uint256)": {
+					"notice": "Creates a Purpose to be sustained for the sending address."
+				},
+				"sustain(address,uint256)": {
+					"notice": "Contribute a specified amount to the sustainability of the specified address's active Purpose.If the amount results in surplus, redistribute the surplus proportionally to sustainers of the Purpose."
+				},
+				"updatePurpose(uint256,uint256)": {
+					"notice": "Updates the sustainability target and duration of the sender's current Purpose if it hasn't yet received sustainments, orsets the properties of the Purpose that will take effect once the current Purpose expires."
+				},
+				"withdrawFromRedistributionPool(uint256)": {
+					"notice": "A message sender can withdraw what's been redistributed to it by a Purpose once it's expired."
+				},
+				"withdrawFromSustainabilityPool(uint256)": {
+					"notice": "A message sender can withdrawl funds that have been used to sustain it's Purposes."
+				}
+			}
+		}
+	},
+	"settings": {
+		"compilationTarget": {
+			"localhost/contracts/Fountain.sol": "Fountain"
+		},
+		"evmVersion": "istanbul",
+		"libraries": {},
+		"metadata": {
+			"bytecodeHash": "ipfs"
+		},
+		"optimizer": {
+			"enabled": false,
+			"runs": 200
+		},
+		"remappings": []
+	},
+	"sources": {
+		"@openzeppelin/contracts/math/SafeMath.sol": {
+			"keccak256": "0x9a9cf02622cd7a64261b10534fc3260449da25c98c9e96d1b4ae8110a20e5806",
+			"urls": [
+				"bzz-raw://2df142592d1dc267d9549049ee3317fa190d2f87eaa565f86ab05ec83f7ab8f5",
+				"dweb:/ipfs/QmSkJtcfWo7c42KnL5hho6GFxK6HRNV91XABx1P7xDtfLV"
+			]
+		},
+		"@openzeppelin/contracts/token/ERC20/IERC20.sol": {
+			"keccak256": "0x5c26b39d26f7ed489e555d955dcd3e01872972e71fdd1528e93ec164e4f23385",
+			"urls": [
+				"bzz-raw://efdc632af6960cf865dbc113665ea1f5b90eab75cc40ec062b2f6ae6da582017",
+				"dweb:/ipfs/QmfAZFDuG62vxmAN9DnXApv7e7PMzPqi4RkqqZHLMSQiY5"
+			]
+		},
+		"@openzeppelin/contracts/token/ERC20/SafeERC20.sol": {
+			"keccak256": "0xf3b30f8a49631420635a8c35daacfcaa338012755f18a76fdd118730256f9a27",
+			"urls": [
+				"bzz-raw://0d7de652204c2ee291a61aa984103dfc7ae4392d651fbbc44a0079caee7c69a3",
+				"dweb:/ipfs/Qmcw1cQnq9eWDnrCBwU3TNyqLfTMUFg5YKpYUkELoMPuUE"
+			]
+		},
+		"@openzeppelin/contracts/utils/Address.sol": {
+			"keccak256": "0xf5fa8cbdffa5ef8be49b246b5628facc30b71707e78a45d80d93b64eff3fe390",
+			"urls": [
+				"bzz-raw://774e78a9ff32792cc95db4d2ceaf3a7965bb7f0bea5e6cb7cff182b450d44b37",
+				"dweb:/ipfs/QmRRMC4uj7eAcLW7chynA3sNEYULMFazdLwQHKHQPyzAbA"
+			]
+		},
+		"localhost/contracts/Fountain.sol": {
+			"keccak256": "0x8147348043834c122b289cb26bb357a691d62cd7d4a556fa674d50789af1fe2b",
+			"urls": [
+				"bzz-raw://54b3304555aee5b60558e36e926a8311d7dbc28135794cf0f3b2ec549e5a27b9",
+				"dweb:/ipfs/QmbDWm5qh3iKu6KTo7sWiZUmXCCwWni1YT58id6jqzayCb"
+			]
+		}
+	},
+	"version": 1
+}

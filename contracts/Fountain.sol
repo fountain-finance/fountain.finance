@@ -1,4 +1,6 @@
-pragma solidity >=0.4.25 <0.8.0;
+// SPDX-License-Identifier: MIT
+// TODO: What license do we release under?
+pragma solidity >=0.6.0 <0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
@@ -76,7 +78,7 @@ contract Fountain {
     mapping(address => uint256) public latestPurposeIds;
 
     /// @notice List of addresses sustained by each sustainer
-    mapping(address => address[]) sustainedAddressesBySustainer;
+    mapping(address => address[]) public sustainedAddressesBySustainer;
 
     // The amount that has been redistributed to each address as a consequence of surplus.
     mapping(address => uint256) redistributionPool;
@@ -86,7 +88,9 @@ contract Fountain {
 
     // The total number of Purposes created, which is used for issuing Purpose IDs.
     // Purposes should have an id > 0, 0 should not be a purpose id.
-    uint256 purposeCount;
+    uint256 public purposeCount;
+
+    address public owner;
 
     // The contract currently only supports sustainments in DAI.
     IERC20 public DAI;
@@ -115,15 +119,21 @@ contract Fountain {
 
     event Withdrawn(address indexed by, Pool indexed from, uint256 amount);
 
+    modifier onlyOwner() {
+        require(owner == msg.sender, "Can only be called by owner");
+        _;
+    }
+
     constructor() public {
         DAI = IERC20(address(0x6B175474E89094C44Da98b954EedeAC495271d0F));
         purposeCount = 0;
+        owner = msg.sender;
     }
 
     /// @notice Creates a Purpose to be sustained for the sending address.
     /// @param t The sustainability target for the Purpose, in DAI.
     /// @param d The duration of the Purpose, which starts once this is created.
-    function createPurpose(uint256 t, uint256 d) external {
+    function createPurpose(uint256 t, uint256 d) external onlyOwner {
         require(
             latestPurposeIds[msg.sender] == 0,
             "Fountain::createPurpose: Address already has a purpose, call `update` instead"
@@ -158,7 +168,7 @@ contract Fountain {
     /// @notice If the amount results in surplus, redistribute the surplus proportionally to sustainers of the Purpose.
     /// @param w Address to sustain.
     /// @param a Amount of sustainment.
-    function sustain(address w, uint256 a) external {
+    function sustain(address w, uint256 a) external payable {
         require(
             a > 0,
             "Fountain::sustain: The sustainment amount should be positive"
@@ -242,7 +252,7 @@ contract Fountain {
 
     /// @notice A message sender can withdrawl funds that have been used to sustain it's Purposes.
     /// @param a The amount to withdraw.
-    function withdrawFromSustainabilityPool(uint256 a) external {
+    function withdrawFromSustainabilityPool(uint256 a) external onlyOwner {
         require(
             sustainabilityPool[msg.sender] >= a,
             "This address doesn't have enough to withdraw this much."
@@ -262,7 +272,7 @@ contract Fountain {
     function updatePurpose(
         uint256 t,
         uint256 d // address _want
-    ) external {
+    ) external onlyOwner {
         uint256 purposeId = purposeIdToUpdate(msg.sender);
         Purpose storage purpose = purposes[purposeId];
         if (t > 0) purpose.sustainabilityTarget = t;
@@ -276,6 +286,28 @@ contract Fountain {
             purpose.duration,
             DAI
         );
+    }
+
+    function getSustainabilityTarget(address w)
+        external
+        view
+        returns (uint256)
+    {
+        require(latestPurposeIds[w] > 0, "No purpose found at this address");
+        require(
+            purposes[latestPurposeIds[w]].exists,
+            "No purpose found at this address"
+        );
+        return purposes[latestPurposeIds[w]].sustainabilityTarget;
+    }
+
+    function getDuration(address w) external view returns (uint256) {
+        require(latestPurposeIds[w] > 0, "No purpose found at this address");
+        require(
+            purposes[latestPurposeIds[w]].exists,
+            "No purpose found at this address"
+        );
+        return purposes[latestPurposeIds[w]].duration;
     }
 
     /// @dev The sustainability of a Purpose cannot be updated if there have been sustainments made to it.

@@ -1,5 +1,5 @@
 {
-    "solidity.compileUsingRemoteVersion": "v0.6.6+commit.6c089d02",
+    "solidity.compileUsingRemoteVersion": "v0.6.12+commit.27d51765",
     "[solidity]": {
       "editor.tabSize": 4
     },
