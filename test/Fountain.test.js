@@ -1,7 +1,7 @@
 const Fountain = artifacts.require("Fountain");
 const truffleAssert = require("truffle-assertions");
 
-contract("Fountain", ([owner, sustainer]) => {
+contract("Fountain", ([owner, creator, sustainer]) => {
   let fountain;
   let DAI = "0x6B175474E89094C44Da98b954EedeAC495271d0F";
 
@@ -18,25 +18,23 @@ contract("Fountain", ([owner, sustainer]) => {
     it("stores expected address for DAI", async () => {
       assert.equal(await fountain.DAI(), DAI);
     });
-
-    it("has expected owner", async () => {
-      assert.equal(await fountain.owner(), owner);
-    });
   });
 
   describe("createPurpose", async () => {
     beforeEach(async () => {
-      fountain = await Fountain.new(); // create new instance each test
+      fountain = await Fountain.new();
     });
 
-    it("should initialize a purpose for the owner", async () => {
+    it("should initialize a purpose for the address", async () => {
       const target = 100;
       const duration = 30;
-      const result = await fountain.createPurpose(target, duration);
+      const result = await fountain.createPurpose(target, duration, {
+        from: creator,
+      });
       const updatedTarget = (
-        await fountain.getSustainabilityTarget(owner)
+        await fountain.getSustainabilityTarget(creator)
       ).toNumber();
-      const updatedDuration = (await fountain.getDuration(owner)).toNumber();
+      const updatedDuration = (await fountain.getDuration(creator)).toNumber();
       assert.equal(updatedTarget, target, "Invalid sustainability target");
       assert.equal(updatedDuration, duration, "Invalid duration");
       assert.equal(
@@ -64,17 +62,21 @@ contract("Fountain", ([owner, sustainer]) => {
 
     beforeEach(async () => {
       fountain = await Fountain.new(); // create new instance each test
-      await fountain.createPurpose(initialTarget, initialDuration);
+      await fountain.createPurpose(initialTarget, initialDuration, {
+        from: creator,
+      });
     });
 
     it("should update a purpose for the owner", async () => {
       const target = 200;
       const duration = 50;
-      const result = await fountain.updatePurpose(target, duration);
+      const result = await fountain.updatePurpose(target, duration, {
+        from: creator,
+      });
       const updatedTarget = (
-        await fountain.getSustainabilityTarget(owner)
+        await fountain.getSustainabilityTarget(creator)
       ).toNumber();
-      const updatedDuration = (await fountain.getDuration(owner)).toNumber();
+      const updatedDuration = (await fountain.getDuration(creator)).toNumber();
       assert.equal(updatedTarget, target, "Invalid sustainability target");
       assert.equal(updatedDuration, duration, "Invalid duration");
       assert.equal(
