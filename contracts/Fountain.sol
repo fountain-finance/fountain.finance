@@ -39,8 +39,6 @@ contract Fountain {
 
     /// @notice The Purpose structure represents a purpose stewarded by an address, and accounts for which addresses have contributed to it.
     struct Purpose {
-        // A unique ID for this purpose.
-        uint256 id;
         // The address who defined this Purpose and who has access to its sustainments.
         address who;
         // The token that this Purpose can be funded with. Currently only DAI is supported.
@@ -140,7 +138,6 @@ contract Fountain {
         // the RHS creating a memory-struct that contains a mapping.
         // See https://ethereum.stackexchange.com/a/72310
         Purpose storage newPurpose = purposes[purposeCount];
-        newPurpose.id = purposeCount;
         newPurpose.who = msg.sender;
         newPurpose.sustainabilityTarget = t;
         newPurpose.currentSustainment = 0;
@@ -151,9 +148,9 @@ contract Fountain {
         newPurpose.previousPurposeId = 0;
         newPurpose.redistributed = false;
 
-        latestPurposeIds[msg.sender] = newPurpose.id;
+        latestPurposeIds[msg.sender] = purposeCount;
 
-        emit PurposeCreated(newPurpose.id, msg.sender, t, d, DAI);
+        emit PurposeCreated(purposeCount, msg.sender, t, d, DAI);
     }
 
     /// @notice Contribute a specified amount to the sustainability of the specified address's active Purpose.
@@ -165,6 +162,8 @@ contract Fountain {
             a > 0,
             "Fountain::sustain: The sustainment amount should be positive"
         );
+
+        // TODO: Should a purpose creator be able to sustain their own Purpose?
 
         uint256 purposeId = purposeIdToSustain(w);
         Purpose storage currentPurpose = purposes[purposeId];
@@ -216,7 +215,7 @@ contract Fountain {
         updateTrackedRedistribution(currentPurpose);
 
         // Emit events.
-        emit PurposeSustained(currentPurpose.id, msg.sender, a);
+        emit PurposeSustained(purposeId, msg.sender, a);
     }
 
     /// @notice A message sender can withdraw what's been redistributed to it by a Purpose once it's expired.
@@ -276,7 +275,7 @@ contract Fountain {
         purpose.want = DAI; //IERC20(_want);
 
         emit PurposeUpdated(
-            purpose.id,
+            purposeId,
             purpose.who,
             purpose.sustainabilityTarget,
             purpose.duration,
@@ -325,9 +324,9 @@ contract Fountain {
         // No pending purpose found, clone the latest purpose
         purposeId = getLatestPurposeId(w);
         Purpose storage purpose = createPurposeFromId(purposeId);
-        purposes[purpose.id] = purpose;
-        latestPurposeIds[w] = purpose.id;
-        return purpose.id;
+        purposes[purposeId] = purpose;
+        latestPurposeIds[w] = purposeId;
+        return purposeId;
     }
 
     /// @dev Only active Purposes can be sustained.
@@ -348,10 +347,10 @@ contract Fountain {
         // No pending purpose found, clone the latest purpose
         purposeId = getLatestPurposeId(w);
         Purpose storage purpose = createPurposeFromId(purposeId);
-        purposes[purpose.id] = purpose;
-        latestPurposeIds[w] = purpose.id;
+        purposes[purposeId] = purpose;
+        latestPurposeIds[w] = purposeId;
 
-        return purpose.id;
+        return purposeId;
     }
 
     /// @dev Proportionally allocate the specified amount to the contributors of the specified Purpose,
@@ -410,8 +409,11 @@ contract Fountain {
         // been redistributed, then process the redistribution. Iterate until
         // a purpose is found that has already been redistributed. This logic
         // should skip Active and Pending purposes.
+        // Short circuits by testing `purpose.redistributed` to limit number
+        // of iterations since all previous purposes must have already been
+        // redistributed.
         while (purposeId > 0 && !purpose.redistributed) {
-            if (state(purpose.id) == PurposeState.Redistributing) {
+            if (state(purposeId) == PurposeState.Redistributing) {
                 // This purpose still needs to be redistributed
                 for (uint256 i = 0; i < purpose.sustainers.length; i++) {
                     address sustainer = purpose.sustainers[i];
@@ -443,7 +445,6 @@ contract Fountain {
         // the RHS creating a memory-struct that contains a mapping.
         // See https://ethereum.stackexchange.com/a/72310
         Purpose storage purpose = purposes[purposeCount];
-        purpose.id = purposeCount;
         purpose.who = currentPurpose.who;
         purpose.sustainabilityTarget = currentPurpose.sustainabilityTarget;
         purpose.currentSustainment = 0;
@@ -453,11 +454,11 @@ contract Fountain {
         purpose.duration = currentPurpose.duration;
         purpose.want = currentPurpose.want;
         purpose.exists = true;
-        purpose.previousPurposeId = currentPurpose.id;
+        purpose.previousPurposeId = purposeCount;
         purpose.redistributed = false;
 
         emit PurposeUpdated(
-            purpose.id,
+            purposeCount,
             purpose.who,
             purpose.sustainabilityTarget,
             purpose.duration,
@@ -470,7 +471,7 @@ contract Fountain {
     function state(uint256 purposeId) private view returns (PurposeState) {
         require(
             purposeCount >= purposeId && purposeId > 0,
-            "Fountain::state: Invalid purpose id"
+            "Fountain::state: Invalid purposeId"
         );
         Purpose storage purpose = purposes[purposeId];
         require(purpose.exists, "Fountain::state: Invalid purpose");
