@@ -185,12 +185,32 @@ contract Fountain {
                 currentPurpose.currentSustainment
             );
 
+        // // TODO: Is this logic any clearer than above?
+        // uint256 sustainabilityAmount;
+        // if (
+        //     currentPurpose.currentSustainment.add(a) <=
+        //     currentPurpose.sustainabilityTarget
+        // ) {
+        //     sustainabilityAmount = a;
+        // } else if (
+        //     currentPurpose.currentSustainment >=
+        //     currentPurpose.sustainabilityTarget
+        // ) {
+        //     sustainabilityAmount = 0;
+        // } else {
+        //     sustainabilityAmount = currentPurpose.sustainabilityTarget.sub(
+        //         currentPurpose.currentSustainment
+        //     );
+        // }
+
         // Save if the message sender is contributing to this Purpose for the first time.
         bool isNewSustainer = currentPurpose.sustainmentTracker[msg.sender] ==
             0;
 
+        // TODO: Not working.`Returned error: VM Exception while processing transaction: revert`
+        //https://ethereum.stackexchange.com/questions/60028/testing-transfer-of-tokens-with-truffle
         // Move the full sustainment amount to this address.
-        DAI.transferFrom(msg.sender, address(this), a);
+        // DAI.transferFrom(msg.sender, address(this), a);
 
         // Increment the funds that can withdrawn for sustainability.
         sustainabilityPool[w] = sustainabilityPool[w].add(sustainabilityAmount);
@@ -283,6 +303,24 @@ contract Fountain {
         );
     }
 
+    // --- External getters for testing --- //
+
+    function getSustainabilityPool(address w) external view returns (uint256) {
+        return sustainabilityPool[w];
+    }
+
+    function getRedistributionPool(address w) external view returns (uint256) {
+        return redistributionPool[w];
+    }
+
+    function getSustainedAddressCount(address w)
+        external
+        view
+        returns (uint256)
+    {
+        return sustainedAddressesBySustainer[w].length;
+    }
+
     function getSustainabilityTarget(address w)
         external
         view
@@ -304,6 +342,52 @@ contract Fountain {
         );
         return purposes[latestPurposeIds[w]].duration;
     }
+
+    function getCurrentSustainment(address w) external view returns (uint256) {
+        require(latestPurposeIds[w] > 0, "No purpose found at this address");
+        require(
+            purposes[latestPurposeIds[w]].exists,
+            "No purpose found at this address"
+        );
+        return purposes[latestPurposeIds[w]].currentSustainment;
+    }
+
+    function getSustainerCount(address w) external view returns (uint256) {
+        require(latestPurposeIds[w] > 0, "No purpose found at this address");
+        require(
+            purposes[latestPurposeIds[w]].exists,
+            "No purpose found at this address"
+        );
+        return purposes[latestPurposeIds[w]].sustainers.length;
+    }
+
+    function getSustainmentTrackerAmount(address who, address by)
+        external
+        view
+        returns (uint256)
+    {
+        require(latestPurposeIds[who] > 0, "No purpose found at this address");
+        require(
+            purposes[latestPurposeIds[who]].exists,
+            "No purpose found at this address"
+        );
+        return purposes[latestPurposeIds[who]].sustainmentTracker[by];
+    }
+
+    function getRedistributionTrackerAmount(address who, address by)
+        external
+        view
+        returns (uint256)
+    {
+        require(latestPurposeIds[who] > 0, "No purpose found at this address");
+        require(
+            purposes[latestPurposeIds[who]].exists,
+            "No purpose found at this address"
+        );
+        return purposes[latestPurposeIds[who]].redistributionTracker[by];
+    }
+
+    // --- private --- //
 
     /// @dev The sustainability of a Purpose cannot be updated if there have been sustainments made to it.
     /// @param w The address to find a Purpose for.
@@ -361,7 +445,7 @@ contract Fountain {
         // Return if there's no surplus.
         if (p.sustainabilityTarget >= p.currentSustainment) return;
 
-        uint256 surplus = p.sustainabilityTarget.sub(p.currentSustainment);
+        uint256 surplus = p.currentSustainment.sub(p.sustainabilityTarget);
 
         // For each sustainer, calculate their share of the sustainment and
         // allocate a proportional share of the surplus, overwriting any previous value.
