@@ -384,7 +384,7 @@ contract Fountain {
     /// @dev Check to see if the given Purpose has started.
     /// @param p The Purpose to check.
     function isPurposeStarted(Purpose storage p) private view returns (bool) {
-        return now > p.start;
+        return now >= p.start;
     }
 
     /// @dev Check to see if the given Purpose has expired.
@@ -478,11 +478,13 @@ contract Fountain {
 
         if (isPurposeExpired(purpose)) {
             return PurposeState.Redistributing;
-        } else if (isPurposeStarted(purpose) && !isPurposeExpired(purpose)) {
-            return PurposeState.Active;
-        } else {
-            return PurposeState.Pending;
         }
+
+        if (isPurposeStarted(purpose) && !isPurposeExpired(purpose)) {
+            return PurposeState.Active;
+        }
+
+        return PurposeState.Pending;
     }
 
     function getLatestPurposeId(address purposeAddress)
@@ -536,7 +538,7 @@ contract Fountain {
             "Fountain::getActivePurposeId: Invalid purpose"
         );
         purposeId = purpose.previousPurposeId;
-        if (state(purposeId) == PurposeState.Active) {
+        if (purposeId > 0 && state(purposeId) == PurposeState.Active) {
             return purposeId;
         }
         return 0;
