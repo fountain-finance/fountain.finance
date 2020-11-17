@@ -1,6 +1,6 @@
 // const ConvertLib = artifacts.require("ConvertLib");
 // const MetaCoin = artifacts.require("MetaCoin");
-const Fountain = artifacts.require("Fountain");
+const Fountain = artifacts.require("FountainV1");
 
 module.exports = function (deployer) {
   // deployer.deploy(ConvertLib);

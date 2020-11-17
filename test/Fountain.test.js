@@ -1,4 +1,4 @@
-const Fountain = artifacts.require("Fountain");
+const Fountain = artifacts.require("FountainV1");
 const truffleAssert = require("truffle-assertions");
 
 const assertPurposeCount = async (instance, count, message) => {

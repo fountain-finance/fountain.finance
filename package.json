@@ -1,6 +1,6 @@
 {
   "name": "fountain.finance",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "scripts": {
     "compile": "truffle compile",
     "test": "truffle test",
@@ -17,11 +17,11 @@
   },
   "homepage": "https://github.com/tauren/fountain.finance#readme",
   "dependencies": {
-    "@openzeppelin/contracts": "^3.2.0",
-    "remixd": "^0.2.4-alpha.0"
+    "@openzeppelin/contracts": "^3.2.0"
   },
   "devDependencies": {
     "truffle": "^5.1.53",
-    "truffle-assertions": "^0.9.2"
+    "truffle-assertions": "^0.9.2",
+    "remixd": "^0.2.4-alpha.0"
   }
 }

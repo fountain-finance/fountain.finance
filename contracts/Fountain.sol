@@ -28,7 +28,7 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
  You can withdraw funds of yours from the sustainers pool (where surplus is distributed) or the sustainability pool (where sustainments are kept) at anytime.
 
 */
-contract Fountain {
+contract FountainV1 {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
