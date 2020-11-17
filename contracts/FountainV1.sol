@@ -55,8 +55,8 @@ contract FountainV1 {
         bool exists;
         // ID of the previous purpose
         uint256 previousPurposeId;
-        // Indicates if surplus funds have been redistributed
-        bool redistributed;
+        // Indicates if surplus funds have been redistributed for each sustainer address
+        mapping(address => bool) redistributed;
         // The addresses who have helped to sustain this purpose.
         // NOTE: Using arrays may be bad practice and/or expensive
         address[] sustainers;
@@ -146,7 +146,6 @@ contract FountainV1 {
         newPurpose.want = DAI;
         newPurpose.exists = true;
         newPurpose.previousPurposeId = 0;
-        newPurpose.redistributed = false;
 
         latestPurposeIds[msg.sender] = purposeCount;
 
@@ -240,7 +239,7 @@ contract FountainV1 {
 
     /// @notice A message sender can withdraw what's been redistributed to it by a Purpose once it's expired.
     /// @param a The amount to withdraw.
-    function withdrawFromRedistributionPool(uint256 a) external {
+    function withdrawRedistributions(uint256 a) external payable {
         // Iterate over all of sender's sustained addresses to make sure
         // redistribution has completed for all redistributable purposes
         address[] storage sustainedAddresses = sustainedAddressesBySustainer[msg
@@ -248,7 +247,28 @@ contract FountainV1 {
         for (uint256 i = 0; i < sustainedAddresses.length; i++) {
             redistributePurpose(sustainedAddresses[i]);
         }
+        performWithdrawRedistributions(a);
+    }
 
+    function withdrawRedistributions(uint256 a, address sustained)
+        external
+        payable
+    {
+        redistributePurpose(sustained);
+        performWithdrawRedistributions(a);
+    }
+
+    function withdrawRedistributions(uint256 a, address[] calldata sustained)
+        external
+        payable
+    {
+        for (uint256 i = 0; i < sustained.length; i++) {
+            redistributePurpose(sustained[i]);
+        }
+        performWithdrawRedistributions(a);
+    }
+
+    function performWithdrawRedistributions(uint256 a) private {
         require(
             redistributionPool[msg.sender] >= a,
             "This address doesn't have enough to withdraw this much."
@@ -263,7 +283,7 @@ contract FountainV1 {
 
     /// @notice A message sender can withdrawl funds that have been used to sustain it's Purposes.
     /// @param a The amount to withdraw.
-    function withdrawFromSustainabilityPool(uint256 a) external {
+    function withdrawSustainments(uint256 a) external {
         require(
             sustainabilityPool[msg.sender] >= a,
             "This address doesn't have enough to withdraw this much."
@@ -490,22 +510,19 @@ contract FountainV1 {
 
         // Iterate through all purposes for this address. For each iteration,
         // if the purpose has a state of redistributing and it has not yet
-        // been redistributed, then process the redistribution. Iterate until
-        // a purpose is found that has already been redistributed. This logic
-        // should skip Active and Pending purposes.
+        // been redistributed for the current sustainer, then process the
+        // redistribution. Iterate until a purpose is found that has already
+        // been redistributed for this sustainer. This logic should skip Active
+        // and Pending purposes.
         // Short circuits by testing `purpose.redistributed` to limit number
         // of iterations since all previous purposes must have already been
         // redistributed.
-        while (purposeId > 0 && !purpose.redistributed) {
+        address sustainer = msg.sender;
+        while (purposeId > 0 && !purpose.redistributed[sustainer]) {
             if (state(purposeId) == PurposeState.Redistributing) {
-                // This purpose still needs to be redistributed
-                for (uint256 i = 0; i < purpose.sustainers.length; i++) {
-                    address sustainer = purpose.sustainers[i];
-                    redistributionPool[sustainer] = redistributionPool[sustainer]
-                        .add(purpose.redistributionTracker[sustainer]);
-                }
-                // Mark purpose as having been redistributed
-                purpose.redistributed = true;
+                redistributionPool[sustainer] = redistributionPool[sustainer]
+                    .add(purpose.redistributionTracker[sustainer]);
+                purpose.redistributed[sustainer] = true;
             }
             purposeId = purpose.previousPurposeId;
             purpose = purposes[purposeId];
@@ -539,7 +556,6 @@ contract FountainV1 {
         purpose.want = currentPurpose.want;
         purpose.exists = true;
         purpose.previousPurposeId = purposeCount;
-        purpose.redistributed = false;
 
         emit PurposeUpdated(
             purposeCount,
