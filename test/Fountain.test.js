@@ -1,5 +1,6 @@
 const Fountain = artifacts.require("FountainV1");
 const truffleAssert = require("truffle-assertions");
+const MockContract = artifacts.require("./MockContract.sol");
 
 const assertMoneyPoolCount = async (instance, count, message) => {
   const currentCount = (await instance.moneyPoolCount()).toNumber();
@@ -103,11 +104,16 @@ const assertSustainedAddressCount = async (
 // sustainer: an address that sustains a MoneyPool
 contract("Fountain", ([owner, creator, sustainer]) => {
   let fountain;
-  let DAI = "0x6B175474E89094C44Da98b954EedeAC495271d0F";
+  // let DAI = "0x6B175474E89094C44Da98b954EedeAC495271d0F";
+  let mock;
 
   describe("constructor", async () => {
     beforeEach(async () => {
-      fountain = await Fountain.new(); // create new instance each test
+      // Instantiate mock and make it return true for any invocation
+      mock = await MockContract.new();
+      await mock.givenAnyReturnBool(true);
+      // instantiate Fountain with mocked contract
+      fountain = await Fountain.new(mock.address); // create new instance each test
       // fountain = await Fountain.deployed(); // reuse same instance each test
     });
 
@@ -116,13 +122,17 @@ contract("Fountain", ([owner, creator, sustainer]) => {
     });
 
     it("stores expected address for DAI", async () => {
-      assert.equal(await fountain.DAI(), DAI);
+      assert.equal(await fountain.DAI(), mock.address);
     });
   });
 
   describe("createMoneyPool", async () => {
     beforeEach(async () => {
-      fountain = await Fountain.new();
+      // Instantiate mock and make it return true for any invocation
+      mock = await MockContract.new();
+      await mock.givenAnyReturnBool(true);
+      // instantiate Fountain with mocked contract
+      fountain = await Fountain.new(mock.address); // create new instance each test
     });
 
     it("initializes MoneyPool for an uninitialized address", async () => {
@@ -164,7 +174,11 @@ contract("Fountain", ([owner, creator, sustainer]) => {
     const initialDuration = 30;
 
     beforeEach(async () => {
-      fountain = await Fountain.new(); // create new instance each test
+      // Instantiate mock and make it return true for any invocation
+      mock = await MockContract.new();
+      await mock.givenAnyReturnBool(true);
+      // instantiate Fountain with mocked contract
+      fountain = await Fountain.new(mock.address); // create new instance each test
       await fountain.createMoneyPool(initialTarget, initialDuration, {
         from: creator,
       });
@@ -216,7 +230,11 @@ contract("Fountain", ([owner, creator, sustainer]) => {
     const initialDuration = 30;
 
     beforeEach(async () => {
-      fountain = await Fountain.new(); // create new instance each test
+      // Instantiate mock and make it return true for any invocation
+      mock = await MockContract.new();
+      await mock.givenAnyReturnBool(true);
+      // instantiate Fountain with mocked contract
+      fountain = await Fountain.new(mock.address); // create new instance each test
       await fountain.createMoneyPool(initialTarget, initialDuration, {
         from: creator,
       });

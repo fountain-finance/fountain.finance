@@ -110,8 +110,14 @@ contract FountainV1 {
 
     event Withdrawn(address indexed by, Pool indexed from, uint256 amount);
 
-    constructor() public {
-        DAI = IERC20(address(0x6B175474E89094C44Da98b954EedeAC495271d0F));
+    constructor(IERC20 daiInstance) public {
+        DAI = daiInstance;
+        // TODO: Can we provide a default value?
+        // if (dai.valid) {
+        //     DAI = dai;
+        // } else {
+        //     IERC20(address(0x6B175474E89094C44Da98b954EedeAC495271d0F));
+        // }
         moneyPoolCount = 0;
     }
 
@@ -206,8 +212,9 @@ contract FountainV1 {
 
         // TODO: Not working.`Returned error: VM Exception while processing transaction: revert`
         //https://ethereum.stackexchange.com/questions/60028/testing-transfer-of-tokens-with-truffle
+        // Got it working in tests using MockContract, but need to verify it works in testnet.
         // Move the full sustainment amount to this address.
-        // DAI.transferFrom(msg.sender, address(this), a);
+        DAI.transferFrom(msg.sender, address(this), a);
 
         // Increment the funds that can withdrawn for sustainability.
         sustainabilityPool[w] = sustainabilityPool[w].add(sustainabilityAmount);

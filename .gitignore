@@ -1,5 +1,6 @@
 # generated
 build/
+contracts/artifacts/
 
 # misc
 .DS_Store
