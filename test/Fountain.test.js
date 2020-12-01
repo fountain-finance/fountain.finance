@@ -1,8 +1,8 @@
 const Fountain = artifacts.require("FountainV1");
 const truffleAssert = require("truffle-assertions");
 
-const assertPurposeCount = async (instance, count, message) => {
-  const currentCount = (await instance.purposeCount()).toNumber();
+const assertMoneyPoolCount = async (instance, count, message) => {
+  const currentCount = (await instance.moneyPoolCount()).toNumber();
   assert.equal(currentCount, count, message);
 };
 
@@ -99,8 +99,8 @@ const assertSustainedAddressCount = async (
 
 // TODO: document owner, creator, sustainer
 // owner: the address that deploys the Fountain contract
-// creator: an address that creates a Purpose
-// sustainer: an address that sustains a Purpose
+// creator: an address that creates a MoneyPool
+// sustainer: an address that sustains a MoneyPool
 contract("Fountain", ([owner, creator, sustainer]) => {
   let fountain;
   let DAI = "0x6B175474E89094C44Da98b954EedeAC495271d0F";
@@ -111,8 +111,8 @@ contract("Fountain", ([owner, creator, sustainer]) => {
       // fountain = await Fountain.deployed(); // reuse same instance each test
     });
 
-    it("initially has no purposes", async () => {
-      assert.equal(await fountain.purposeCount(), 0);
+    it("initially has no MoneyPools", async () => {
+      assert.equal(await fountain.moneyPoolCount(), 0);
     });
 
     it("stores expected address for DAI", async () => {
@@ -120,15 +120,15 @@ contract("Fountain", ([owner, creator, sustainer]) => {
     });
   });
 
-  describe("createPurpose", async () => {
+  describe("createMoneyPool", async () => {
     beforeEach(async () => {
       fountain = await Fountain.new();
     });
 
-    it("initializes purpose for an uninitialized address", async () => {
+    it("initializes MoneyPool for an uninitialized address", async () => {
       const target = 100;
       const duration = 30;
-      const result = await fountain.createPurpose(target, duration, {
+      const result = await fountain.createMoneyPool(target, duration, {
         from: creator,
       });
       await assertSustainabilityTarget(
@@ -138,44 +138,48 @@ contract("Fountain", ([owner, creator, sustainer]) => {
         "Invalid sustainability target"
       );
       await assertDuration(fountain, creator, duration, "Invalid duration");
-      await assertPurposeCount(fountain, 1, "Only one purpose should exist");
-      truffleAssert.eventEmitted(result, "PurposeCreated");
+      await assertMoneyPoolCount(
+        fountain,
+        1,
+        "Only one moneyPool should exist"
+      );
+      truffleAssert.eventEmitted(result, "MoneyPoolCreated");
     });
 
-    it("fails to initialize purpose for already initialized address", async () => {
+    it("fails to initialize MoneyPool for already initialized address", async () => {
       const target = 100;
       const duration = 30;
-      await fountain.createPurpose(target, duration, {
+      await fountain.createMoneyPool(target, duration, {
         from: creator,
       });
-      const result = fountain.createPurpose(target, duration, {
+      const result = fountain.createMoneyPool(target, duration, {
         from: creator,
       });
       truffleAssert.fails(result, truffleAssert.ErrorType.REVERT);
     });
   });
 
-  describe("updatePurpose when purpose has not been sustained", async () => {
+  describe("updateMoneyPool when MoneyPool has not been sustained", async () => {
     const initialTarget = 100;
     const initialDuration = 30;
 
     beforeEach(async () => {
       fountain = await Fountain.new(); // create new instance each test
-      await fountain.createPurpose(initialTarget, initialDuration, {
+      await fountain.createMoneyPool(initialTarget, initialDuration, {
         from: creator,
       });
     });
 
-    it("updates existing purpose", async () => {
+    it("updates existing MoneyPool", async () => {
       const target = 200;
       const duration = 50;
-      const result = await fountain.updatePurpose(target, duration, {
-        // Using address that has already created a purpose
+      const result = await fountain.updateMoneyPool(target, duration, {
+        // Using address that has already created a MoneyPool
         from: creator,
       });
-      truffleAssert.eventEmitted(result, "PurposeUpdated", {
+      truffleAssert.eventEmitted(result, "MoneyPoolUpdated", {
         // Including params doesn't work, tried with various param numbers.
-        // `AssertionError: Event filter for PurposeUpdated returned no results`.
+        // `AssertionError: Event filter for MoneyPoolUpdated returned no results`.
         // param3: target,
         // param4: duration,
       });
@@ -187,15 +191,19 @@ contract("Fountain", ([owner, creator, sustainer]) => {
         "Invalid sustainability target"
       );
       await assertDuration(fountain, creator, duration, "Invalid duration");
-      await assertPurposeCount(fountain, 1, "Only one purpose should exist");
+      await assertMoneyPoolCount(
+        fountain,
+        1,
+        "Only one MoneyPool should exist"
+      );
     });
 
-    it("fail when no purpose has been created", async () => {
+    it("fail when no MoneyPool has been created", async () => {
       const target = 100;
       const duration = 30;
       await truffleAssert.fails(
-        fountain.updatePurpose(target, duration, {
-          // Using address that has not created a purpose
+        fountain.updateMoneyPool(target, duration, {
+          // Using address that has not created a MoneyPool
           from: sustainer,
         }),
         truffleAssert.ErrorType.REVERT
@@ -209,7 +217,7 @@ contract("Fountain", ([owner, creator, sustainer]) => {
 
     beforeEach(async () => {
       fountain = await Fountain.new(); // create new instance each test
-      await fountain.createPurpose(initialTarget, initialDuration, {
+      await fountain.createMoneyPool(initialTarget, initialDuration, {
         from: creator,
       });
     });
@@ -251,12 +259,12 @@ contract("Fountain", ([owner, creator, sustainer]) => {
     ];
 
     scenarios.forEach((scenario) => {
-      it(`sustains existing purpose - ${scenario.description}`, async () => {
+      it(`sustains existing moneyPool when ${scenario.description}`, async () => {
         const result = await fountain.sustain(creator, scenario.amount, {
-          // Using address that did not create the purpose
+          // Using address that did not create the MoneyPool
           from: sustainer,
         });
-        truffleAssert.eventEmitted(result, "PurposeSustained");
+        truffleAssert.eventEmitted(result, "MoneyPoolSustained");
 
         await assertCurrentSustainment(
           fountain,
@@ -309,18 +317,18 @@ contract("Fountain", ([owner, creator, sustainer]) => {
       const amount = 0;
       await truffleAssert.fails(
         fountain.sustain(creator, amount, {
-          // Using address that did not create the purpose
+          // Using address that did not create the MoneyPool
           from: sustainer,
         }),
         truffleAssert.ErrorType.REVERT
       );
     });
 
-    it("fails when no purpose found at address", async () => {
+    it("fails when no moneyPool found at address", async () => {
       const amount = 10;
       await truffleAssert.fails(
         fountain.sustain(owner, amount, {
-          // Using address that did not create the purpose
+          // Using address that did not create the MoneyPool
           from: sustainer,
         }),
         truffleAssert.ErrorType.REVERT

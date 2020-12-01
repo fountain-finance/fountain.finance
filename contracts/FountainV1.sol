@@ -8,72 +8,67 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 
 /**
 
- @title Fountain
+@title Fountain
 
- Create a Purpose and say how much it'll cost to persue that purpose.
- Maybe your Purpose is providing a service or public good, maybe it's being a YouTuber, engineer, or artist -- or anything else.
- Anyone with your address can help sustain your Purpose, and
- once you're sustainable any additional contributions are redistributed back your sustainers and those you depend on.
+Create a MoneyPool (MP) that'll be used to sustain your project, and specify what its sustainability target is.
+Maybe your project is providing a service or public good, maybe it's being a YouTuber, engineer, or artist -- or anything else. Anyone with your address can help sustain your project, and once you're sustainable any additional contributions are redistributed back your sustainers.
 
- Each Purpose is like a tier of the fountain, and the predefined cost to pursue the purpose is like the bounds of that tier's pool.
+Each MoneyPool is like a tier of the fountain, and the predefined cost to pursue the project is like the bounds of that tier's pool.
 
- Your Purpose could be personal, or it could be managed by an address controlled by a community or business.
- Either way, an address can only be associated with one active Purpose at a time, and one queued up for when the active one expires.
+An address can only be associated with one active MoneyPool at a time, as well as a mutable one queued up for when the active MoneyPool expires. If a MoneyPool expires without one queued, the current one will be cloned and sustainments will be allocated to it. It's impossible for a MoneyPool's sustainability or duration to be changed once there has been a sustainment made to it. Any attempts to do so will just create/update the message sender's queued MP.
 
- If a Purpose expires without one queued, the current one will be cloned and sustainments will be allocated to it.
+You can withdraw funds of yours from the sustainers pool (where MoneyPool surplus is distributed) or the sustainability pool (where MoneyPool sustainments are kept) at anytime.
 
- To avoid abuse, it's impossible for a Purpose's sustainability or duration to be changed once there has been a sustainment made to it.
- Any attempts to do so will just create/update the message sender's queued purpose.
+Future versions will introduce MoneyPool dependencies so that your project's surplus can get redistributed to the MP of projects it is composed of before reaching sustainers. We also think it may be best to create a governance token WATER and route ~7% of ecosystem surplus to token holders, ~3% to contributors (which can be run through Fountain itself), and the rest to sustainers.
 
- You can withdraw funds of yours from the sustainers pool (where surplus is distributed) or the sustainability pool (where sustainments are kept) at anytime.
-
+The basin of the Fountain is always the sustainers of projects.
 */
 contract FountainV1 {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
-    /// @notice Possible states that a Purpose may be in
-    /// @dev immutable once the Purpose receives some sustainment.
+    /// @notice Possible states that a MoneyPool may be in
+    /// @dev immutable once the MoneyPool receives some sustainment.
     /// @dev entirely mutable until they become active.
-    enum PurposeState {Pending, Active, Redistributing}
+    enum MoneyPoolState {Pending, Active, Redistributing}
 
-    /// @notice The Purpose structure represents a purpose stewarded by an address, and accounts for which addresses have contributed to it.
-    struct Purpose {
-        // The address who defined this Purpose and who has access to its sustainments.
+    /// @notice The MoneyPool structure represents a MoneyPool stewarded by an address, and accounts for which addresses have contributed to it.
+    struct MoneyPool {
+        // The address who defined this MoneyPool and who has access to its sustainments.
         address who;
-        // The token that this Purpose can be funded with. Currently only DAI is supported.
+        // The token that this MoneyPool can be funded with. Currently only DAI is supported.
         IERC20 want;
-        // The amount that represents sustainability for this purpose.
+        // The amount that represents sustainability for this MoneyPool.
         uint256 sustainabilityTarget;
-        // The running amount that's been contributed to sustaining this purpose.
+        // The running amount that's been contributed to sustaining this MoneyPool.
         uint256 currentSustainment;
-        // The time when this Purpose will become active.
+        // The time when this MoneyPool will become active.
         uint256 start;
-        // The number of days until this Purpose's redistribution is added to the redistributionPool.
+        // The number of days until this MoneyPool's redistribution is added to the redistributionPool.
         uint256 duration;
-        // Helper to verify this Purpose exists.
+        // Helper to verify this MoneyPool exists.
         bool exists;
-        // ID of the previous purpose
-        uint256 previousPurposeId;
+        // ID of the previous MoneyPool
+        uint256 previousMoneyPoolId;
         // Indicates if surplus funds have been redistributed for each sustainer address
         mapping(address => bool) redistributed;
-        // The addresses who have helped to sustain this purpose.
+        // The addresses who have helped to sustain this MoneyPool.
         // NOTE: Using arrays may be bad practice and/or expensive
         address[] sustainers;
-        // The amount each address has contributed to the sustaining of this purpose.
+        // The amount each address has contributed to the sustaining of this MoneyPool.
         mapping(address => uint256) sustainmentTracker;
         // The amount that will be redistributed to each address as a
-        // consequence of abundant sustainment of this Purpose once it resolves.
+        // consequence of abundant sustainment of this MoneyPool once it resolves.
         mapping(address => uint256) redistributionTracker;
     }
 
     enum Pool {REDISTRIBUTION, SUSTAINABILITY}
 
-    /// @notice The official record of all Purposes ever created
-    mapping(uint256 => Purpose) public purposes;
+    /// @notice The official record of all MoneyPools ever created
+    mapping(uint256 => MoneyPool) public moneyPools;
 
-    /// @notice The latest purpose for each creator address
-    mapping(address => uint256) public latestPurposeIds;
+    /// @notice The latest MoneyPool for each creator address
+    mapping(address => uint256) public latestMoneyPoolIds;
 
     /// @notice List of addresses sustained by each sustainer
     mapping(address => address[]) public sustainedAddressesBySustainer;
@@ -81,17 +76,17 @@ contract FountainV1 {
     // The amount that has been redistributed to each address as a consequence of surplus.
     mapping(address => uint256) redistributionPool;
 
-    // The funds that have accumulated to sustain each address's Purposes.
+    // The funds that have accumulated to sustain each address's MoneyPools.
     mapping(address => uint256) sustainabilityPool;
 
-    // The total number of Purposes created, which is used for issuing Purpose IDs.
-    // Purposes should have an id > 0, 0 should not be a purpose id.
-    uint256 public purposeCount;
+    // The total number of MoneyPools created, which is used for issuing MoneyPool IDs.
+    // MoneyPools should have an id > 0, 0 should not be a moneyPoolId.
+    uint256 public moneyPoolCount;
 
     // The contract currently only supports sustainments in DAI.
     IERC20 public DAI;
 
-    event PurposeCreated(
+    event MoneyPoolCreated(
         uint256 indexed id,
         address indexed by,
         uint256 sustainabilityTarget,
@@ -99,7 +94,7 @@ contract FountainV1 {
         IERC20 want
     );
 
-    event PurposeUpdated(
+    event MoneyPoolUpdated(
         uint256 indexed id,
         address indexed by,
         uint256 sustainabilityTarget,
@@ -107,7 +102,7 @@ contract FountainV1 {
         IERC20 want
     );
 
-    event PurposeSustained(
+    event MoneyPoolSustained(
         uint256 indexed id,
         address indexed sustainer,
         uint256 amount
@@ -117,43 +112,43 @@ contract FountainV1 {
 
     constructor() public {
         DAI = IERC20(address(0x6B175474E89094C44Da98b954EedeAC495271d0F));
-        purposeCount = 0;
+        moneyPoolCount = 0;
     }
 
-    /// @notice Creates a Purpose to be sustained for the sending address.
-    /// @param t The sustainability target for the Purpose, in DAI.
-    /// @param d The duration of the Purpose, which starts once this is created.
-    function createPurpose(uint256 t, uint256 d) external {
+    /// @notice Creates a MoneyPool to be sustained for the sending address.
+    /// @param t The sustainability target for the MoneyPool, in DAI.
+    /// @param d The duration of the MoneyPool, which starts once this is created.
+    function createMoneyPool(uint256 t, uint256 d) external {
         require(
-            latestPurposeIds[msg.sender] == 0,
-            "Fountain::createPurpose: Address already has a purpose, call `update` instead"
+            latestMoneyPoolIds[msg.sender] == 0,
+            "Fountain::createMoneyPool: Address already has a MoneyPool, call `update` instead"
         );
         require(
             d >= 1,
-            "Fountain::createPurpose: A purpose must be at least one day long"
+            "Fountain::createMoneyPool: A MoneyPool must be at least one day long"
         );
 
-        purposeCount++;
+        moneyPoolCount++;
         // Must create structs that have mappings using this approach to avoid
         // the RHS creating a memory-struct that contains a mapping.
         // See https://ethereum.stackexchange.com/a/72310
-        Purpose storage newPurpose = purposes[purposeCount];
-        newPurpose.who = msg.sender;
-        newPurpose.sustainabilityTarget = t;
-        newPurpose.currentSustainment = 0;
-        newPurpose.start = now;
-        newPurpose.duration = d;
-        newPurpose.want = DAI;
-        newPurpose.exists = true;
-        newPurpose.previousPurposeId = 0;
+        MoneyPool storage newMoneyPool = moneyPools[moneyPoolCount];
+        newMoneyPool.who = msg.sender;
+        newMoneyPool.sustainabilityTarget = t;
+        newMoneyPool.currentSustainment = 0;
+        newMoneyPool.start = now;
+        newMoneyPool.duration = d;
+        newMoneyPool.want = DAI;
+        newMoneyPool.exists = true;
+        newMoneyPool.previousMoneyPoolId = 0;
 
-        latestPurposeIds[msg.sender] = purposeCount;
+        latestMoneyPoolIds[msg.sender] = moneyPoolCount;
 
-        emit PurposeCreated(purposeCount, msg.sender, t, d, DAI);
+        emit MoneyPoolCreated(moneyPoolCount, msg.sender, t, d, DAI);
     }
 
-    /// @notice Contribute a specified amount to the sustainability of the specified address's active Purpose.
-    /// @notice If the amount results in surplus, redistribute the surplus proportionally to sustainers of the Purpose.
+    /// @notice Contribute a specified amount to the sustainability of the specified address's active MoneyPool.
+    /// @notice If the amount results in surplus, redistribute the surplus proportionally to sustainers of the MoneyPool.
     /// @param w Address to sustain.
     /// @param a Amount of sustainment.
     function sustain(address w, uint256 a) external payable {
@@ -162,48 +157,51 @@ contract FountainV1 {
             "Fountain::sustain: The sustainment amount should be positive"
         );
 
-        // TODO: Should a purpose creator be able to sustain their own Purpose?
+        // TODO: Should a MoneyPool creator be able to sustain their own MoneyPool?
 
-        uint256 purposeId = purposeIdToSustain(w);
-        Purpose storage currentPurpose = purposes[purposeId];
+        uint256 moneyPoolId = moneyPoolIdToSustain(w);
+        MoneyPool storage currentMoneyPool = moneyPools[moneyPoolId];
 
-        require(currentPurpose.exists, "Fountain::sustain: Purpose not found");
+        require(
+            currentMoneyPool.exists,
+            "Fountain::sustain: MoneyPool not found"
+        );
 
-        // The amount that should be reserved for the sustainability of the Purpose.
-        // If the Purpose is already sustainable, set to 0.
-        // If the Purpose is not yet sustainable even with the amount, set to the amount.
+        // The amount that should be reserved for the sustainability of the MoneyPool.
+        // If the MoneyPool is already sustainable, set to 0.
+        // If the MoneyPool is not yet sustainable even with the amount, set to the amount.
         // Otherwise set to the portion of the amount it'll take for sustainability to be reached
-        uint256 sustainabilityAmount = currentPurpose.currentSustainment.add(
+        uint256 sustainabilityAmount = currentMoneyPool.currentSustainment.add(
             a
-        ) <= currentPurpose.sustainabilityTarget
+        ) <= currentMoneyPool.sustainabilityTarget
             ? a
-            : currentPurpose.currentSustainment >=
-                currentPurpose.sustainabilityTarget
+            : currentMoneyPool.currentSustainment >=
+                currentMoneyPool.sustainabilityTarget
             ? 0
-            : currentPurpose.sustainabilityTarget.sub(
-                currentPurpose.currentSustainment
+            : currentMoneyPool.sustainabilityTarget.sub(
+                currentMoneyPool.currentSustainment
             );
 
         // // TODO: Is this logic any clearer than above?
         // uint256 sustainabilityAmount;
         // if (
-        //     currentPurpose.currentSustainment.add(a) <=
-        //     currentPurpose.sustainabilityTarget
+        //     currentMoneyPool.currentSustainment.add(a) <=
+        //     currentMoneyPool.sustainabilityTarget
         // ) {
         //     sustainabilityAmount = a;
         // } else if (
-        //     currentPurpose.currentSustainment >=
-        //     currentPurpose.sustainabilityTarget
+        //     currentMoneyPool.currentSustainment >=
+        //     currentMoneyPool.sustainabilityTarget
         // ) {
         //     sustainabilityAmount = 0;
         // } else {
-        //     sustainabilityAmount = currentPurpose.sustainabilityTarget.sub(
-        //         currentPurpose.currentSustainment
+        //     sustainabilityAmount = currentMoneyPool.sustainabilityTarget.sub(
+        //         currentMoneyPool.currentSustainment
         //     );
         // }
 
-        // Save if the message sender is contributing to this Purpose for the first time.
-        bool isNewSustainer = currentPurpose.sustainmentTracker[msg.sender] ==
+        // Save if the message sender is contributing to this MoneyPool for the first time.
+        bool isNewSustainer = currentMoneyPool.sustainmentTracker[msg.sender] ==
             0;
 
         // TODO: Not working.`Returned error: VM Exception while processing transaction: revert`
@@ -214,38 +212,38 @@ contract FountainV1 {
         // Increment the funds that can withdrawn for sustainability.
         sustainabilityPool[w] = sustainabilityPool[w].add(sustainabilityAmount);
 
-        // Increment the sustainments to the Purpose made by the message sender.
-        currentPurpose.sustainmentTracker[msg.sender] = currentPurpose
+        // Increment the sustainments to the MoneyPool made by the message sender.
+        currentMoneyPool.sustainmentTracker[msg.sender] = currentMoneyPool
             .sustainmentTracker[msg.sender]
             .add(a);
 
-        // Increment the total amount contributed to the sustainment of the Purpose.
-        currentPurpose.currentSustainment = currentPurpose
+        // Increment the total amount contributed to the sustainment of the MoneyPool.
+        currentMoneyPool.currentSustainment = currentMoneyPool
             .currentSustainment
             .add(a);
 
-        // Add the message sender as a sustainer of the Purpose if this is the first sustainment it's making to it.
-        if (isNewSustainer) currentPurpose.sustainers.push(msg.sender);
+        // Add the message sender as a sustainer of the MoneyPool if this is the first sustainment it's making to it.
+        if (isNewSustainer) currentMoneyPool.sustainers.push(msg.sender);
 
         // Add this address to the sustainer's list of sustained addresses
         sustainedAddressesBySustainer[msg.sender].push(w);
 
-        // Redistribution amounts may have changed for the current Purpose.
-        updateTrackedRedistribution(currentPurpose);
+        // Redistribution amounts may have changed for the current MoneyPool.
+        updateTrackedRedistribution(currentMoneyPool);
 
         // Emit events.
-        emit PurposeSustained(purposeId, msg.sender, a);
+        emit MoneyPoolSustained(moneyPoolId, msg.sender, a);
     }
 
-    /// @notice A message sender can withdraw what's been redistributed to it by a Purpose once it's expired.
+    /// @notice A message sender can withdraw what's been redistributed to it by a MoneyPool once it's expired.
     /// @param a The amount to withdraw.
     function withdrawRedistributions(uint256 a) external payable {
         // Iterate over all of sender's sustained addresses to make sure
-        // redistribution has completed for all redistributable purposes
+        // redistribution has completed for all redistributable MoneyPools
         address[] storage sustainedAddresses = sustainedAddressesBySustainer[msg
             .sender];
         for (uint256 i = 0; i < sustainedAddresses.length; i++) {
-            redistributePurpose(sustainedAddresses[i]);
+            redistributeMoneyPool(sustainedAddresses[i]);
         }
         performWithdrawRedistributions(a);
     }
@@ -254,7 +252,7 @@ contract FountainV1 {
         external
         payable
     {
-        redistributePurpose(sustained);
+        redistributeMoneyPool(sustained);
         performWithdrawRedistributions(a);
     }
 
@@ -263,7 +261,7 @@ contract FountainV1 {
         payable
     {
         for (uint256 i = 0; i < sustained.length; i++) {
-            redistributePurpose(sustained[i]);
+            redistributeMoneyPool(sustained[i]);
         }
         performWithdrawRedistributions(a);
     }
@@ -281,7 +279,7 @@ contract FountainV1 {
         emit Withdrawn(msg.sender, Pool.SUSTAINABILITY, a);
     }
 
-    /// @notice A message sender can withdrawl funds that have been used to sustain it's Purposes.
+    /// @notice A message sender can withdrawl funds that have been used to sustain it's MoneyPools.
     /// @param a The amount to withdraw.
     function withdrawSustainments(uint256 a) external {
         require(
@@ -296,34 +294,35 @@ contract FountainV1 {
         emit Withdrawn(msg.sender, Pool.SUSTAINABILITY, a);
     }
 
-    /// @notice Updates the sustainability target and duration of the sender's current Purpose if it hasn't yet received sustainments, or
-    /// @notice sets the properties of the Purpose that will take effect once the current Purpose expires.
+    /// @notice Updates the sustainability target and duration of the sender's current MoneyPool if it hasn't yet received sustainments, or
+    /// @notice sets the properties of the MoneyPool that will take effect once the current MoneyPool expires.
     /// @param t The sustainability target to set.
     /// @param d The duration to set.
-    function updatePurpose(
+    function updateMoneyPool(
         uint256 t,
         uint256 d // address _want
     ) external {
         require(
-            latestPurposeIds[msg.sender] > 0,
-            "You don't yet have a purpose."
+            latestMoneyPoolIds[msg.sender] > 0,
+            "You don't yet have a MoneyPool."
         );
-        uint256 purposeId = purposeIdToUpdate(msg.sender);
-        Purpose storage purpose = purposes[purposeId];
-        if (t > 0) purpose.sustainabilityTarget = t;
-        if (d > 0) purpose.duration = d;
-        purpose.want = DAI; //IERC20(_want);
+        uint256 moneyPoolId = moneyPoolIdToUpdate(msg.sender);
+        MoneyPool storage moneyPool = moneyPools[moneyPoolId];
+        if (t > 0) moneyPool.sustainabilityTarget = t;
+        if (d > 0) moneyPool.duration = d;
+        moneyPool.want = DAI; //IERC20(_want);
 
-        emit PurposeUpdated(
-            purposeId,
-            purpose.who,
-            purpose.sustainabilityTarget,
-            purpose.duration,
+        emit MoneyPoolUpdated(
+            moneyPoolId,
+            moneyPool.who,
+            moneyPool.sustainabilityTarget,
+            moneyPool.duration,
             DAI
         );
     }
 
     // --- External getters for testing --- //
+    // TODO: Is there a better approach than exposing getters
 
     function getSustainabilityPool(address w) external view returns (uint256) {
         return sustainabilityPool[w];
@@ -346,39 +345,51 @@ contract FountainV1 {
         view
         returns (uint256)
     {
-        require(latestPurposeIds[w] > 0, "No purpose found at this address");
         require(
-            purposes[latestPurposeIds[w]].exists,
-            "No purpose found at this address"
+            latestMoneyPoolIds[w] > 0,
+            "No MoneyPool found at this address"
         );
-        return purposes[latestPurposeIds[w]].sustainabilityTarget;
+        require(
+            moneyPools[latestMoneyPoolIds[w]].exists,
+            "No MoneyPool found at this address"
+        );
+        return moneyPools[latestMoneyPoolIds[w]].sustainabilityTarget;
     }
 
     function getDuration(address w) external view returns (uint256) {
-        require(latestPurposeIds[w] > 0, "No purpose found at this address");
         require(
-            purposes[latestPurposeIds[w]].exists,
-            "No purpose found at this address"
+            latestMoneyPoolIds[w] > 0,
+            "No MoneyPool found at this address"
         );
-        return purposes[latestPurposeIds[w]].duration;
+        require(
+            moneyPools[latestMoneyPoolIds[w]].exists,
+            "No MoneyPool found at this address"
+        );
+        return moneyPools[latestMoneyPoolIds[w]].duration;
     }
 
     function getCurrentSustainment(address w) external view returns (uint256) {
-        require(latestPurposeIds[w] > 0, "No purpose found at this address");
         require(
-            purposes[latestPurposeIds[w]].exists,
-            "No purpose found at this address"
+            latestMoneyPoolIds[w] > 0,
+            "No MoneyPool found at this address"
         );
-        return purposes[latestPurposeIds[w]].currentSustainment;
+        require(
+            moneyPools[latestMoneyPoolIds[w]].exists,
+            "No MoneyPool found at this address"
+        );
+        return moneyPools[latestMoneyPoolIds[w]].currentSustainment;
     }
 
     function getSustainerCount(address w) external view returns (uint256) {
-        require(latestPurposeIds[w] > 0, "No purpose found at this address");
         require(
-            purposes[latestPurposeIds[w]].exists,
-            "No purpose found at this address"
+            latestMoneyPoolIds[w] > 0,
+            "No MoneyPool found at this address"
         );
-        return purposes[latestPurposeIds[w]].sustainers.length;
+        require(
+            moneyPools[latestMoneyPoolIds[w]].exists,
+            "No MoneyPool found at this address"
+        );
+        return moneyPools[latestMoneyPoolIds[w]].sustainers.length;
     }
 
     function getSustainmentTrackerAmount(address who, address by)
@@ -386,12 +397,15 @@ contract FountainV1 {
         view
         returns (uint256)
     {
-        require(latestPurposeIds[who] > 0, "No purpose found at this address");
         require(
-            purposes[latestPurposeIds[who]].exists,
-            "No purpose found at this address"
+            latestMoneyPoolIds[who] > 0,
+            "No MoneyPool found at this address"
         );
-        return purposes[latestPurposeIds[who]].sustainmentTracker[by];
+        require(
+            moneyPools[latestMoneyPoolIds[who]].exists,
+            "No MoneyPool found at this address"
+        );
+        return moneyPools[latestMoneyPoolIds[who]].sustainmentTracker[by];
     }
 
     function getRedistributionTrackerAmount(address who, address by)
@@ -399,69 +413,74 @@ contract FountainV1 {
         view
         returns (uint256)
     {
-        require(latestPurposeIds[who] > 0, "No purpose found at this address");
         require(
-            purposes[latestPurposeIds[who]].exists,
-            "No purpose found at this address"
+            latestMoneyPoolIds[who] > 0,
+            "No MoneyPool found at this address"
         );
-        return purposes[latestPurposeIds[who]].redistributionTracker[by];
+        require(
+            moneyPools[latestMoneyPoolIds[who]].exists,
+            "No MoneyPool found at this address"
+        );
+        return moneyPools[latestMoneyPoolIds[who]].redistributionTracker[by];
     }
 
     // --- private --- //
 
-    /// @dev The sustainability of a Purpose cannot be updated if there have been sustainments made to it.
-    /// @param w The address to find a Purpose for.
-    function purposeIdToUpdate(address w) private returns (uint256) {
-        // Check if there is an active purpose
-        uint256 purposeId = getActivePurposeId(w);
-        if (purposeId != 0 && purposes[purposeId].currentSustainment == 0) {
-            // Allow active purpose to be updated if it has no sustainments
-            return purposeId;
+    /// @dev The sustainability of a MoneyPool cannot be updated if there have been sustainments made to it.
+    /// @param w The address to find a MoneyPool for.
+    function moneyPoolIdToUpdate(address w) private returns (uint256) {
+        // Check if there is an active moneyPool
+        uint256 moneyPoolId = getActiveMoneyPoolId(w);
+        if (
+            moneyPoolId != 0 && moneyPools[moneyPoolId].currentSustainment == 0
+        ) {
+            // Allow active moneyPool to be updated if it has no sustainments
+            return moneyPoolId;
         }
 
-        // Cannot update active purpose, check if there is a pending purpose
-        purposeId = getPendingPurposeId(w);
-        if (purposeId != 0) {
-            return purposeId;
+        // Cannot update active moneyPool, check if there is a pending moneyPool
+        moneyPoolId = getPendingMoneyPoolId(w);
+        if (moneyPoolId != 0) {
+            return moneyPoolId;
         }
 
-        // No pending purpose found, clone the latest purpose
-        purposeId = getLatestPurposeId(w);
-        Purpose storage purpose = createPurposeFromId(purposeId);
-        purposes[purposeId] = purpose;
-        latestPurposeIds[w] = purposeId;
-        return purposeId;
+        // No pending moneyPool found, clone the latest moneyPool
+        moneyPoolId = getLatestMoneyPoolId(w);
+        MoneyPool storage moneyPool = createMoneyPoolFromId(moneyPoolId);
+        moneyPools[moneyPoolId] = moneyPool;
+        latestMoneyPoolIds[w] = moneyPoolId;
+        return moneyPoolId;
     }
 
-    /// @dev Only active Purposes can be sustained.
-    /// @param w The address to find a Purpose for.
-    function purposeIdToSustain(address w) private returns (uint256) {
-        // Check if there is an active purpose
-        uint256 purposeId = getActivePurposeId(w);
-        if (purposeId != 0) {
-            return purposeId;
+    /// @dev Only active MoneyPools can be sustained.
+    /// @param w The address to find a MoneyPool for.
+    function moneyPoolIdToSustain(address w) private returns (uint256) {
+        // Check if there is an active moneyPool
+        uint256 moneyPoolId = getActiveMoneyPoolId(w);
+        if (moneyPoolId != 0) {
+            return moneyPoolId;
         }
 
-        // No active purpose found, check if there is a pending purpose
-        purposeId = getPendingPurposeId(w);
-        if (purposeId != 0) {
-            return purposeId;
+        // No active moneyPool found, check if there is a pending moneyPool
+        moneyPoolId = getPendingMoneyPoolId(w);
+        if (moneyPoolId != 0) {
+            return moneyPoolId;
         }
 
-        // No pending purpose found, clone the latest purpose
-        purposeId = getLatestPurposeId(w);
-        Purpose storage purpose = createPurposeFromId(purposeId);
-        purposes[purposeId] = purpose;
-        latestPurposeIds[w] = purposeId;
+        // No pending moneyPool found, clone the latest moneyPool
+        moneyPoolId = getLatestMoneyPoolId(w);
+        MoneyPool storage moneyPool = createMoneyPoolFromId(moneyPoolId);
+        moneyPools[moneyPoolId] = moneyPool;
+        latestMoneyPoolIds[w] = moneyPoolId;
 
-        return purposeId;
+        return moneyPoolId;
     }
 
-    /// @dev Proportionally allocate the specified amount to the contributors of the specified Purpose,
+    /// @dev Proportionally allocate the specified amount to the contributors of the specified MoneyPool,
     /// @dev meaning each sustainer will receive a portion of the specified amount equivalent to the portion of the total
-    /// @dev amount contributed to the sustainment of the Purpose that they are responsible for.
-    /// @param p The Purpose to update.
-    function updateTrackedRedistribution(Purpose storage p) private {
+    /// @dev amount contributed to the sustainment of the MoneyPool that they are responsible for.
+    /// @param p The MoneyPool to update.
+    function updateTrackedRedistribution(MoneyPool storage p) private {
         // Return if there's no surplus.
         if (p.sustainabilityTarget >= p.currentSustainment) return;
 
@@ -480,166 +499,174 @@ contract FountainV1 {
                 currentSustainmentProportion
             );
 
-            //Store the updated redistribution in the Purpose.
+            //Store the updated redistribution in the MoneyPool.
             p.redistributionTracker[sustainer] = sustainerSurplusShare;
         }
     }
 
-    /// @dev Check to see if the given Purpose has started.
-    /// @param p The Purpose to check.
-    function isPurposeStarted(Purpose storage p) private view returns (bool) {
+    /// @dev Check to see if the given MoneyPool has started.
+    /// @param p The MoneyPool to check.
+    function isMoneyPoolStarted(MoneyPool storage p)
+        private
+        view
+        returns (bool)
+    {
         return now >= p.start;
     }
 
-    /// @dev Check to see if the given Purpose has expired.
-    /// @param p The Purpose to check.
-    function isPurposeExpired(Purpose storage p) private view returns (bool) {
+    /// @dev Check to see if the given MoneyPool has expired.
+    /// @param p The MoneyPool to check.
+    function isMoneyPoolExpired(MoneyPool storage p)
+        private
+        view
+        returns (bool)
+    {
         return now > p.start.add(p.duration.mul(1 days));
     }
 
-    /// @dev Take any tracked redistribution in the given purpose and
+    /// @dev Take any tracked redistribution in the given moneyPool and
     /// @dev add them to the redistribution pool.
-    /// @param purposeAddress The Purpose address to redistribute.
-    function redistributePurpose(address purposeAddress) private {
-        uint256 purposeId = latestPurposeIds[purposeAddress];
+    /// @param moneyPoolAddress The MoneyPool address to redistribute.
+    function redistributeMoneyPool(address moneyPoolAddress) private {
+        uint256 moneyPoolId = latestMoneyPoolIds[moneyPoolAddress];
         require(
-            purposeId > 0,
-            "Fountain::redistributePurpose: Purpose not found"
+            moneyPoolId > 0,
+            "Fountain::redistributeMoneyPool: MoneyPool not found"
         );
-        Purpose storage purpose = purposes[purposeId];
+        MoneyPool storage moneyPool = moneyPools[moneyPoolId];
 
-        // Iterate through all purposes for this address. For each iteration,
-        // if the purpose has a state of redistributing and it has not yet
+        // Iterate through all MoneyPools for this address. For each iteration,
+        // if the MoneyPool has a state of redistributing and it has not yet
         // been redistributed for the current sustainer, then process the
-        // redistribution. Iterate until a purpose is found that has already
+        // redistribution. Iterate until a MoneyPool is found that has already
         // been redistributed for this sustainer. This logic should skip Active
-        // and Pending purposes.
-        // Short circuits by testing `purpose.redistributed` to limit number
-        // of iterations since all previous purposes must have already been
+        // and Pending MoneyPools.
+        // Short circuits by testing `moneyPool.redistributed` to limit number
+        // of iterations since all previous MoneyPools must have already been
         // redistributed.
         address sustainer = msg.sender;
-        while (purposeId > 0 && !purpose.redistributed[sustainer]) {
-            if (state(purposeId) == PurposeState.Redistributing) {
+        while (moneyPoolId > 0 && !moneyPool.redistributed[sustainer]) {
+            if (state(moneyPoolId) == MoneyPoolState.Redistributing) {
                 redistributionPool[sustainer] = redistributionPool[sustainer]
-                    .add(purpose.redistributionTracker[sustainer]);
-                purpose.redistributed[sustainer] = true;
+                    .add(moneyPool.redistributionTracker[sustainer]);
+                moneyPool.redistributed[sustainer] = true;
             }
-            purposeId = purpose.previousPurposeId;
-            purpose = purposes[purposeId];
+            moneyPoolId = moneyPool.previousMoneyPoolId;
+            moneyPool = moneyPools[moneyPoolId];
         }
     }
 
-    /// @dev Returns a copy of the given Purpose with reset sustainments, and
-    /// @dev that starts when the given Purpose expired.
-    function createPurposeFromId(uint256 purposeId)
+    /// @dev Returns a copy of the given MoneyPool with reset sustainments, and
+    /// @dev that starts when the given MoneyPool expired.
+    function createMoneyPoolFromId(uint256 moneyPoolId)
         private
-        returns (Purpose storage)
+        returns (MoneyPool storage)
     {
-        Purpose storage currentPurpose = purposes[purposeId];
+        MoneyPool storage currentMoneyPool = moneyPools[moneyPoolId];
         require(
-            currentPurpose.exists,
-            "Fountain::createPurposeFromId: Invalid purpose"
+            currentMoneyPool.exists,
+            "Fountain::createMoneyPoolFromId: Invalid moneyPool"
         );
 
-        purposeCount++;
+        moneyPoolCount++;
         // Must create structs that have mappings using this approach to avoid
         // the RHS creating a memory-struct that contains a mapping.
         // See https://ethereum.stackexchange.com/a/72310
-        Purpose storage purpose = purposes[purposeCount];
-        purpose.who = currentPurpose.who;
-        purpose.sustainabilityTarget = currentPurpose.sustainabilityTarget;
-        purpose.currentSustainment = 0;
-        purpose.start = currentPurpose.start.add(
-            currentPurpose.duration.mul(1 days)
+        MoneyPool storage moneyPool = moneyPools[moneyPoolCount];
+        moneyPool.who = currentMoneyPool.who;
+        moneyPool.sustainabilityTarget = currentMoneyPool.sustainabilityTarget;
+        moneyPool.currentSustainment = 0;
+        moneyPool.start = currentMoneyPool.start.add(
+            currentMoneyPool.duration.mul(1 days)
         );
-        purpose.duration = currentPurpose.duration;
-        purpose.want = currentPurpose.want;
-        purpose.exists = true;
-        purpose.previousPurposeId = purposeCount;
+        moneyPool.duration = currentMoneyPool.duration;
+        moneyPool.want = currentMoneyPool.want;
+        moneyPool.exists = true;
+        moneyPool.previousMoneyPoolId = moneyPoolCount;
 
-        emit PurposeUpdated(
-            purposeCount,
-            purpose.who,
-            purpose.sustainabilityTarget,
-            purpose.duration,
+        emit MoneyPoolUpdated(
+            moneyPoolCount,
+            moneyPool.who,
+            moneyPool.sustainabilityTarget,
+            moneyPool.duration,
             DAI
         );
 
-        return purpose;
+        return moneyPool;
     }
 
-    function state(uint256 purposeId) private view returns (PurposeState) {
+    function state(uint256 moneyPoolId) private view returns (MoneyPoolState) {
         require(
-            purposeCount >= purposeId && purposeId > 0,
-            "Fountain::state: Invalid purposeId"
+            moneyPoolCount >= moneyPoolId && moneyPoolId > 0,
+            "Fountain::state: Invalid moneyPoolId"
         );
-        Purpose storage purpose = purposes[purposeId];
-        require(purpose.exists, "Fountain::state: Invalid purpose");
+        MoneyPool storage moneyPool = moneyPools[moneyPoolId];
+        require(moneyPool.exists, "Fountain::state: Invalid MoneyPool");
 
-        if (isPurposeExpired(purpose)) {
-            return PurposeState.Redistributing;
+        if (isMoneyPoolExpired(moneyPool)) {
+            return MoneyPoolState.Redistributing;
         }
 
-        if (isPurposeStarted(purpose) && !isPurposeExpired(purpose)) {
-            return PurposeState.Active;
+        if (isMoneyPoolStarted(moneyPool) && !isMoneyPoolExpired(moneyPool)) {
+            return MoneyPoolState.Active;
         }
 
-        return PurposeState.Pending;
+        return MoneyPoolState.Pending;
     }
 
-    function getLatestPurposeId(address purposeAddress)
+    function getLatestMoneyPoolId(address moneyPoolAddress)
         private
         view
         returns (uint256)
     {
-        uint256 purposeId = latestPurposeIds[purposeAddress];
+        uint256 moneyPoolId = latestMoneyPoolIds[moneyPoolAddress];
         require(
-            purposeId > 0,
-            "Fountain::getLatestPurposeId: Purpose not found"
+            moneyPoolId > 0,
+            "Fountain::getLatestMoneyPoolId: MoneyPool not found"
         );
-        return purposeId;
+        return moneyPoolId;
     }
 
-    function getPendingPurposeId(address purposeAddress)
+    function getPendingMoneyPoolId(address moneyPoolAddress)
         private
         view
         returns (uint256)
     {
-        uint256 purposeId = latestPurposeIds[purposeAddress];
+        uint256 moneyPoolId = latestMoneyPoolIds[moneyPoolAddress];
         require(
-            purposeId > 0,
-            "Fountain::getPendingPurposeId: Purpose not found"
+            moneyPoolId > 0,
+            "Fountain::getPendingMoneyPoolId: MoneyPool not found"
         );
-        if (state(purposeId) != PurposeState.Pending) {
-            // There is no pending purpose if the latest Purpose is not pending
+        if (state(moneyPoolId) != MoneyPoolState.Pending) {
+            // There is no pending moneyPool if the latest MoneyPool is not pending
             return 0;
         }
-        return purposeId;
+        return moneyPoolId;
     }
 
-    function getActivePurposeId(address purposeAddress)
+    function getActiveMoneyPoolId(address moneyPoolAddress)
         private
         view
         returns (uint256)
     {
-        uint256 purposeId = latestPurposeIds[purposeAddress];
+        uint256 moneyPoolId = latestMoneyPoolIds[moneyPoolAddress];
         require(
-            purposeId > 0,
-            "Fountain::getActivePurposeId: Purpose not found"
+            moneyPoolId > 0,
+            "Fountain::getActiveMoneyPoolId: MoneyPool not found"
         );
-        // An Active purpose must be either the latest purpose or the
-        // purpose immediately before it.
-        if (state(purposeId) == PurposeState.Active) {
-            return purposeId;
+        // An Active moneyPool must be either the latest moneyPool or the
+        // moneyPool immediately before it.
+        if (state(moneyPoolId) == MoneyPoolState.Active) {
+            return moneyPoolId;
         }
-        Purpose storage purpose = purposes[purposeId];
+        MoneyPool storage moneyPool = moneyPools[moneyPoolId];
         require(
-            purpose.exists,
-            "Fountain::getActivePurposeId: Invalid purpose"
+            moneyPool.exists,
+            "Fountain::getActiveMoneyPoolId: Invalid MoneyPool"
         );
-        purposeId = purpose.previousPurposeId;
-        if (purposeId > 0 && state(purposeId) == PurposeState.Active) {
-            return purposeId;
+        moneyPoolId = moneyPool.previousMoneyPoolId;
+        if (moneyPoolId > 0 && state(moneyPoolId) == MoneyPoolState.Active) {
+            return moneyPoolId;
         }
         return 0;
     }
