@@ -115,7 +115,7 @@ contract FountainV1 {
         uint256 amount
     );
 
-    event Withdraw(address indexed by, Pool indexed from, uint256 amount);
+    event Collect(address indexed by, Pool indexed from, uint256 amount);
 
     // --- External getters --- //
 
@@ -171,11 +171,12 @@ contract FountainV1 {
     /// @notice Creates a MoneyPool to be sustained for the sending address.
     /// @param target The sustainability target for the MoneyPool, in DAI.
     /// @param duration The duration of the MoneyPool, which starts once this is created.
+    /// @return success If the creation was successful.
     function createMoneyPool(
         uint256 target,
         uint256 duration,
         address want
-    ) external {
+    ) external returns (bool) {
         require(
             latestMoneyPoolIds[msg.sender] == 0,
             "Fountain::createMoneyPool: Address already has a MoneyPool, call `update` instead"
@@ -212,19 +213,20 @@ contract FountainV1 {
             duration,
             want
         );
+
+        return true;
     }
 
     /// @notice Contribute a specified amount to the sustainability of the specified address's active MoneyPool.
     /// @notice If the amount results in surplus, redistribute the surplus proportionally to sustainers of the MoneyPool.
     /// @param who Address to sustain.
     /// @param amount Amount of sustainment.
-    function sustain(address who, uint256 amount) external {
+    /// @return success If the sustainment was successful.
+    function sustain(address who, uint256 amount) external returns (bool) {
         require(
             amount > 0,
             "Fountain::sustain: The sustainment amount should be positive"
         );
-
-        // TODO: Should a MoneyPool creator be able to sustain their own MoneyPool?
 
         uint256 moneyPoolId = moneyPoolIdToSustain(who);
         MoneyPool storage currentMoneyPool = moneyPools[moneyPoolId];
@@ -295,6 +297,8 @@ contract FountainV1 {
 
         // Emit events.
         emit SustainMoneyPool(moneyPoolId, msg.sender, amount);
+
+        return true;
     }
 
     /// @notice A message sender can withdraw what's been redistributed to it by a MoneyPool once it's expired.
@@ -307,12 +311,12 @@ contract FountainV1 {
         for (uint256 i = 0; i < sustainedAddresses.length; i++) {
             redistributeMoneyPool(sustainedAddresses[i]);
         }
-        performWithdrawRedistributions(amount);
+        performCollectRedistributions(amount);
     }
 
     function withdrawRedistributions(uint256 amount, address from) external {
         redistributeMoneyPool(from);
-        performWithdrawRedistributions(amount);
+        performCollectRedistributions(amount);
     }
 
     function withdrawRedistributions(uint256 amount, address[] calldata from)
@@ -321,10 +325,10 @@ contract FountainV1 {
         for (uint256 i = 0; i < from.length; i++) {
             redistributeMoneyPool(from[i]);
         }
-        performWithdrawRedistributions(amount);
+        performCollectRedistributions(amount);
     }
 
-    function performWithdrawRedistributions(uint256 amount) private {
+    function performCollectRedistributions(uint256 amount) private {
         require(
             redistributionPool[msg.sender] >= amount,
             "This address doesn't have enough to withdraw this much."
@@ -336,7 +340,7 @@ contract FountainV1 {
             amount
         );
 
-        emit Withdraw(msg.sender, Pool.SUSTAINABILITY, amount);
+        emit Collect(msg.sender, Pool.SUSTAINABILITY, amount);
     }
 
     /// @notice A message sender can withdrawl funds that have been used to sustain it's MoneyPools.
@@ -353,7 +357,7 @@ contract FountainV1 {
             amount
         );
 
-        emit Withdraw(msg.sender, Pool.SUSTAINABILITY, amount);
+        emit Collect(msg.sender, Pool.SUSTAINABILITY, amount);
     }
 
     /// @notice Updates the sustainability target and duration of the sender's current MoneyPool if it hasn't yet received sustainments, or
@@ -361,11 +365,12 @@ contract FountainV1 {
     /// @param target The sustainability target to set.
     /// @param duration The duration to set.
     /// @param want The token that the MoneyPool wants.
+    /// @return success If the update was successful.
     function updateMoneyPool(
         uint256 target,
         uint256 duration,
         address want
-    ) external {
+    ) external returns (bool) {
         require(
             latestMoneyPoolIds[msg.sender] > 0,
             "You don't yet have a MoneyPool."
@@ -387,6 +392,8 @@ contract FountainV1 {
             moneyPool.duration,
             moneyPool.want
         );
+
+        return true;
     }
 
     // --- private --- //
