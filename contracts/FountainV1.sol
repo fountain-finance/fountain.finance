@@ -21,7 +21,7 @@ If a MoneyPool expires without one queued, the current one will be cloned and su
 It's impossible for a MoneyPool's sustainability or duration to be changed once there has been a sustainment made to it. 
 Any attempts to do so will just create/update the message sender's queued MP.
 
-You can withdraw funds of yours from the sustainers pool (where MoneyPool surplus is distributed) or from the sustainability pool (where MoneyPool sustainments are kept) at anytime.
+You can collect funds of yours from the sustainers pool (where MoneyPool surplus is distributed) or from the sustainability pool (where MoneyPool sustainments are kept) at anytime.
 
 Future versions will introduce MoneyPool dependencies so that your project's surplus can get redistributed to the MP of projects it is composed of before reaching sustainers. 
 We also think it may be best to create a governance token WATER and route ~7% of ecosystem surplus to token holders, ~3% to fountain.finance contributors (which can be run through Fountain itself), and the rest to sustainers.
@@ -271,7 +271,7 @@ contract FountainV1 {
             amount
         );
 
-        // Increment the funds that can withdrawn for sustainability.
+        // Increment the funds that can be collected from sustainability.
         sustainabilityPool[who] = sustainabilityPool[who].add(
             sustainabilityAmount
         );
@@ -301,9 +301,9 @@ contract FountainV1 {
         return true;
     }
 
-    /// @notice A message sender can withdraw what's been redistributed to it by a MoneyPool once it's expired.
-    /// @param amount The amount to withdraw.
-    function withdrawRedistributions(uint256 amount) external {
+    /// @notice A message sender can collect what's been redistributed to it by a MoneyPool once it's expired.
+    /// @param amount The amount to collect.
+    function collectRedistributions(uint256 amount) external {
         // Iterate over all of sender's sustained addresses to make sure
         // redistribution has completed for all redistributable MoneyPools
         address[] storage sustainedAddresses = sustainedAddressesBySustainer[msg
@@ -314,12 +314,12 @@ contract FountainV1 {
         performCollectRedistributions(amount);
     }
 
-    function withdrawRedistributions(uint256 amount, address from) external {
+    function collectRedistributions(uint256 amount, address from) external {
         redistributeMoneyPool(from);
         performCollectRedistributions(amount);
     }
 
-    function withdrawRedistributions(uint256 amount, address[] calldata from)
+    function collectRedistributions(uint256 amount, address[] calldata from)
         external
     {
         for (uint256 i = 0; i < from.length; i++) {
@@ -331,7 +331,7 @@ contract FountainV1 {
     function performCollectRedistributions(uint256 amount) private {
         require(
             redistributionPool[msg.sender] >= amount,
-            "This address doesn't have enough to withdraw this much."
+            "This address doesn't have enough to collect this much."
         );
 
         IERC20(DAI).safeTransferFrom(address(this), msg.sender, amount);
@@ -343,12 +343,12 @@ contract FountainV1 {
         emit Collect(msg.sender, Pool.SUSTAINABILITY, amount);
     }
 
-    /// @notice A message sender can withdrawl funds that have been used to sustain it's MoneyPools.
-    /// @param amount The amount to withdraw.
-    function withdrawSustainments(uint256 amount) external {
+    /// @notice A message sender can collect funds that have been used to sustain it's MoneyPools.
+    /// @param amount The amount to collect.
+    function collectSustainments(uint256 amount) external {
         require(
             sustainabilityPool[msg.sender] >= amount,
-            "This address doesn't have enough to withdraw this much."
+            "This address doesn't have enough to collect this much."
         );
 
         IERC20(DAI).safeTransferFrom(address(this), msg.sender, amount);
