@@ -8,7 +8,7 @@ const assertMoneyPoolCount = async (instance, count, message) => {
 };
 
 const assertDuration = async (instance, address, duration, message) => {
-  const currentDuration = (await instance.getDuration(address)).toNumber();
+  const currentDuration = (await instance.moneyPools((await instance.latestMoneyPoolIds(address)).toNumber())).duration.toNumber();
   assert.equal(currentDuration, duration, message);
 };
 
@@ -18,9 +18,7 @@ const assertSustainabilityTarget = async (
   target,
   message
 ) => {
-  const currentTarget = (
-    await instance.getSustainabilityTarget(address)
-  ).toNumber();
+  const currentTarget = (await instance.moneyPools((await instance.latestMoneyPoolIds(address)).toNumber())).sustainabilityTarget.toNumber();
   assert.equal(currentTarget, target, message);
 };
 
@@ -30,9 +28,7 @@ const assertSustainerCount = async (instance, address, count, message) => {
 };
 
 const assertCurrentSustainment = async (instance, address, amount, message) => {
-  const currentSustainment = (
-    await instance.getCurrentSustainment(address)
-  ).toNumber();
+  const currentSustainment = (await instance.moneyPools((await instance.latestMoneyPoolIds(address)).toNumber())).currentSustainment.toNumber();
   assert.equal(currentSustainment, amount, message);
 };
 
@@ -69,7 +65,7 @@ const assertSustainabilityPoolAmount = async (
   message
 ) => {
   const currentAmount = (
-    await instance.getSustainabilityPool(address)
+    await instance.sustainabilityPool(address)
   ).toNumber();
   assert.equal(currentAmount, amount, message);
 };
@@ -81,21 +77,23 @@ const assertRedistributionPoolAmount = async (
   message
 ) => {
   const currentAmount = (
-    await instance.getRedistributionPool(address)
+    await instance.redistributionPool(address)
   ).toNumber();
   assert.equal(currentAmount, amount, message);
 };
 
-const assertSustainedAddressCount = async (
+const assertSustainedAddresses = async (
   instance,
   address,
-  count,
+  sustainedAddresses,
   message
 ) => {
-  const currentCount = (
-    await instance.getSustainedAddressCount(address)
-  ).toNumber();
-  assert.equal(currentCount, count, message);
+  for (let i = 0; i < sustainedAddresses.length; i++) {
+    const sustainedAddress = sustainedAddresses[i]; 
+    const currentValue = (await instance.sustainedAddressesBySustainer(address, i));
+    assert.equal(currentValue, sustainedAddress, message);
+  }
+  truffleAssert.fails(instance.sustainedAddressesBySustainer(address, sustainedAddresses.length), truffleAssert.ErrorType.INVALID_OPCODE);
 };
 
 // TODO: document owner, creator, sustainer
@@ -250,7 +248,7 @@ contract("Fountain", ([owner, creator, sustainer]) => {
         expectedSustainabilityPoolAmount: 10,
         expectedRedistributionPoolAmount: 0,
         expectedSustainerCount: 1,
-        expectedSustainedAddressCount: 1,
+        expectedSustainedAddresses: [creator],
       },
       {
         description: "sustainment equal to target",
@@ -261,7 +259,7 @@ contract("Fountain", ([owner, creator, sustainer]) => {
         expectedSustainabilityPoolAmount: 100,
         expectedRedistributionPoolAmount: 0,
         expectedSustainerCount: 1,
-        expectedSustainedAddressCount: 1,
+        expectedSustainedAddresses: [creator],
       },
       {
         description: "sustainment greater than target",
@@ -272,7 +270,7 @@ contract("Fountain", ([owner, creator, sustainer]) => {
         expectedSustainabilityPoolAmount: 100,
         expectedRedistributionPoolAmount: 0, // Redistribution hasn't triggered yet
         expectedSustainerCount: 1,
-        expectedSustainedAddressCount: 1,
+        expectedSustainedAddresses: [creator],
       },
     ];
 
@@ -322,10 +320,10 @@ contract("Fountain", ([owner, creator, sustainer]) => {
           scenario.expectedRedistributionPoolAmount,
           "Invalid redistributionPool amount"
         );
-        await assertSustainedAddressCount(
+        await assertSustainedAddresses(
           fountain,
           sustainer,
-          scenario.expectedSustainedAddressCount,
+          scenario.expectedSustainedAddresses,
           "Invalid sustainedAddressCount amount"
         );
       });

@@ -81,10 +81,10 @@ contract FountainV1 {
     mapping(address => address[]) public sustainedAddressesBySustainer;
 
     // The amount that has been redistributed to each address as a consequence of surplus.
-    mapping(address => uint256) redistributionPool;
+    mapping(address => uint256) public redistributionPool;
 
     // The funds that have accumulated to sustain each address's MoneyPools.
-    mapping(address => uint256) sustainabilityPool;
+    mapping(address => uint256) public sustainabilityPool;
 
     // The total number of MoneyPools created, which is used for issuing MoneyPool IDs.
     // MoneyPools should have an id > 0, 0 should not be a moneyPoolId.
@@ -116,6 +116,52 @@ contract FountainV1 {
     );
 
     event Withdraw(address indexed by, Pool indexed from, uint256 amount);
+
+    // --- External getters --- //
+
+    function getSustainerCount(address who) external view returns (uint256) {
+        require(
+            latestMoneyPoolIds[who] > 0,
+            "No MoneyPool found at this address"
+        );
+        require(
+            moneyPools[latestMoneyPoolIds[who]].exists,
+            "No MoneyPool found at this address"
+        );
+        return moneyPools[latestMoneyPoolIds[who]].sustainers.length;
+    }
+
+    function getSustainmentTrackerAmount(address who, address by)
+        external
+        view
+        returns (uint256)
+    {
+        require(
+            latestMoneyPoolIds[who] > 0,
+            "No MoneyPool found at this address"
+        );
+        require(
+            moneyPools[latestMoneyPoolIds[who]].exists,
+            "No MoneyPool found at this address"
+        );
+        return moneyPools[latestMoneyPoolIds[who]].sustainmentTracker[by];
+    }
+
+    function getRedistributionTrackerAmount(address who, address by)
+        external
+        view
+        returns (uint256)
+    {
+        require(
+            latestMoneyPoolIds[who] > 0,
+            "No MoneyPool found at this address"
+        );
+        require(
+            moneyPools[latestMoneyPoolIds[who]].exists,
+            "No MoneyPool found at this address"
+        );
+        return moneyPools[latestMoneyPoolIds[who]].redistributionTracker[by];
+    }
 
     constructor(address dai) public {
         DAI = dai;
@@ -341,121 +387,6 @@ contract FountainV1 {
             moneyPool.duration,
             moneyPool.want
         );
-    }
-
-    // --- External getters for testing --- //
-    // TODO: Is there a better approach than exposing getters
-
-    function getSustainabilityPool(address who)
-        external
-        view
-        returns (uint256)
-    {
-        return sustainabilityPool[who];
-    }
-
-    function getRedistributionPool(address who)
-        external
-        view
-        returns (uint256)
-    {
-        return redistributionPool[who];
-    }
-
-    function getSustainedAddressCount(address who)
-        external
-        view
-        returns (uint256)
-    {
-        return sustainedAddressesBySustainer[who].length;
-    }
-
-    function getSustainabilityTarget(address who)
-        external
-        view
-        returns (uint256)
-    {
-        require(
-            latestMoneyPoolIds[who] > 0,
-            "No MoneyPool found at this address"
-        );
-        require(
-            moneyPools[latestMoneyPoolIds[who]].exists,
-            "No MoneyPool found at this address"
-        );
-        return moneyPools[latestMoneyPoolIds[who]].sustainabilityTarget;
-    }
-
-    function getDuration(address who) external view returns (uint256) {
-        require(
-            latestMoneyPoolIds[who] > 0,
-            "No MoneyPool found at this address"
-        );
-        require(
-            moneyPools[latestMoneyPoolIds[who]].exists,
-            "No MoneyPool found at this address"
-        );
-        return moneyPools[latestMoneyPoolIds[who]].duration;
-    }
-
-    function getCurrentSustainment(address who)
-        external
-        view
-        returns (uint256)
-    {
-        require(
-            latestMoneyPoolIds[who] > 0,
-            "No MoneyPool found at this address"
-        );
-        require(
-            moneyPools[latestMoneyPoolIds[who]].exists,
-            "No MoneyPool found at this address"
-        );
-        return moneyPools[latestMoneyPoolIds[who]].currentSustainment;
-    }
-
-    function getSustainerCount(address who) external view returns (uint256) {
-        require(
-            latestMoneyPoolIds[who] > 0,
-            "No MoneyPool found at this address"
-        );
-        require(
-            moneyPools[latestMoneyPoolIds[who]].exists,
-            "No MoneyPool found at this address"
-        );
-        return moneyPools[latestMoneyPoolIds[who]].sustainers.length;
-    }
-
-    function getSustainmentTrackerAmount(address who, address by)
-        external
-        view
-        returns (uint256)
-    {
-        require(
-            latestMoneyPoolIds[who] > 0,
-            "No MoneyPool found at this address"
-        );
-        require(
-            moneyPools[latestMoneyPoolIds[who]].exists,
-            "No MoneyPool found at this address"
-        );
-        return moneyPools[latestMoneyPoolIds[who]].sustainmentTracker[by];
-    }
-
-    function getRedistributionTrackerAmount(address who, address by)
-        external
-        view
-        returns (uint256)
-    {
-        require(
-            latestMoneyPoolIds[who] > 0,
-            "No MoneyPool found at this address"
-        );
-        require(
-            moneyPools[latestMoneyPoolIds[who]].exists,
-            "No MoneyPool found at this address"
-        );
-        return moneyPools[latestMoneyPoolIds[who]].redistributionTracker[by];
     }
 
     // --- private --- //
