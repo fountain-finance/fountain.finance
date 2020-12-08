@@ -138,7 +138,7 @@ contract("Fountain", ([owner, creator, sustainer]) => {
     it("initializes MoneyPool for an uninitialized address", async () => {
       const target = 100;
       const duration = 30;
-      const result = await fountain.createMoneyPool(target, duration, {
+      const result = await fountain.createMoneyPool(target, duration, mock.address, {
         from: creator,
       });
       await assertSustainabilityTarget(
@@ -153,16 +153,16 @@ contract("Fountain", ([owner, creator, sustainer]) => {
         1,
         "Only one moneyPool should exist"
       );
-      truffleAssert.eventEmitted(result, "MoneyPoolCreated");
+      truffleAssert.eventEmitted(result, "CreateMoneyPool");
     });
 
     it("fails to initialize MoneyPool for already initialized address", async () => {
       const target = 100;
       const duration = 30;
-      await fountain.createMoneyPool(target, duration, {
+      await fountain.createMoneyPool(target, duration, mock.address, {
         from: creator,
       });
-      const result = fountain.createMoneyPool(target, duration, {
+      const result = fountain.createMoneyPool(target, duration, mock.address, {
         from: creator,
       });
       truffleAssert.fails(result, truffleAssert.ErrorType.REVERT);
@@ -179,7 +179,7 @@ contract("Fountain", ([owner, creator, sustainer]) => {
       await mock.givenAnyReturnBool(true);
       // instantiate Fountain with mocked contract
       fountain = await Fountain.new(mock.address); // create new instance each test
-      await fountain.createMoneyPool(initialTarget, initialDuration, {
+      await fountain.createMoneyPool(initialTarget, initialDuration, mock.address, {
         from: creator,
       });
     });
@@ -187,11 +187,11 @@ contract("Fountain", ([owner, creator, sustainer]) => {
     it("updates existing MoneyPool", async () => {
       const target = 200;
       const duration = 50;
-      const result = await fountain.updateMoneyPool(target, duration, {
+      const result = await fountain.updateMoneyPool(target, duration, mock.address, {
         // Using address that has already created a MoneyPool
         from: creator,
       });
-      truffleAssert.eventEmitted(result, "MoneyPoolUpdated", {
+      truffleAssert.eventEmitted(result, "UpdateMoneyPool", {
         // Including params doesn't work, tried with various param numbers.
         // `AssertionError: Event filter for MoneyPoolUpdated returned no results`.
         // param3: target,
@@ -216,7 +216,7 @@ contract("Fountain", ([owner, creator, sustainer]) => {
       const target = 100;
       const duration = 30;
       await truffleAssert.fails(
-        fountain.updateMoneyPool(target, duration, {
+        fountain.updateMoneyPool(target, duration, mock.address, {
           // Using address that has not created a MoneyPool
           from: sustainer,
         }),
@@ -235,7 +235,7 @@ contract("Fountain", ([owner, creator, sustainer]) => {
       await mock.givenAnyReturnBool(true);
       // instantiate Fountain with mocked contract
       fountain = await Fountain.new(mock.address); // create new instance each test
-      await fountain.createMoneyPool(initialTarget, initialDuration, {
+      await fountain.createMoneyPool(initialTarget, initialDuration, mock.address, {
         from: creator,
       });
     });
@@ -282,7 +282,7 @@ contract("Fountain", ([owner, creator, sustainer]) => {
           // Using address that did not create the MoneyPool
           from: sustainer,
         });
-        truffleAssert.eventEmitted(result, "MoneyPoolSustained");
+        truffleAssert.eventEmitted(result, "SustainMoneyPool");
 
         await assertCurrentSustainment(
           fountain,
