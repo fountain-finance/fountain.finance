@@ -1,3 +1,5 @@
+const truffleAssert = require("truffle-assertions");
+
 exports.assertMoneyPoolCount = async (instance, count, message) => {
   const currentCount = (await instance.moneyPoolCount()).toNumber();
   assert.equal(currentCount, count, message);
