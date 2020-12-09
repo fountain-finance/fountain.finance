@@ -8,7 +8,7 @@ const assertMoneyPoolCount = async (instance, count, message) => {
 };
 
 const assertDuration = async (instance, address, duration, message) => {
-  const currentDuration = (await instance.getDuration(address)).toNumber();
+  const currentDuration = (await instance.moneyPools((await instance.latestMoneyPoolIds(address)).toNumber())).duration.toNumber();
   assert.equal(currentDuration, duration, message);
 };
 
@@ -18,9 +18,7 @@ const assertSustainabilityTarget = async (
   target,
   message
 ) => {
-  const currentTarget = (
-    await instance.getSustainabilityTarget(address)
-  ).toNumber();
+  const currentTarget = (await instance.moneyPools((await instance.latestMoneyPoolIds(address)).toNumber())).sustainabilityTarget.toNumber();
   assert.equal(currentTarget, target, message);
 };
 
@@ -30,9 +28,7 @@ const assertSustainerCount = async (instance, address, count, message) => {
 };
 
 const assertCurrentSustainment = async (instance, address, amount, message) => {
-  const currentSustainment = (
-    await instance.getCurrentSustainment(address)
-  ).toNumber();
+  const currentSustainment = (await instance.moneyPools((await instance.latestMoneyPoolIds(address)).toNumber())).currentSustainment.toNumber();
   assert.equal(currentSustainment, amount, message);
 };
 
@@ -69,7 +65,7 @@ const assertSustainabilityPoolAmount = async (
   message
 ) => {
   const currentAmount = (
-    await instance.getSustainabilityPool(address)
+    await instance.sustainabilityPool(address)
   ).toNumber();
   assert.equal(currentAmount, amount, message);
 };
@@ -81,21 +77,23 @@ const assertRedistributionPoolAmount = async (
   message
 ) => {
   const currentAmount = (
-    await instance.getRedistributionPool(address)
+    await instance.redistributionPool(address)
   ).toNumber();
   assert.equal(currentAmount, amount, message);
 };
 
-const assertSustainedAddressCount = async (
+const assertSustainedAddresses = async (
   instance,
   address,
-  count,
+  sustainedAddresses,
   message
 ) => {
-  const currentCount = (
-    await instance.getSustainedAddressCount(address)
-  ).toNumber();
-  assert.equal(currentCount, count, message);
+  for (let i = 0; i < sustainedAddresses.length; i++) {
+    const sustainedAddress = sustainedAddresses[i]; 
+    const currentValue = (await instance.sustainedAddressesBySustainer(address, i));
+    assert.equal(currentValue, sustainedAddress, message);
+  }
+  truffleAssert.fails(instance.sustainedAddressesBySustainer(address, sustainedAddresses.length), truffleAssert.ErrorType.INVALID_OPCODE);
 };
 
 // TODO: document owner, creator, sustainer
@@ -138,7 +136,7 @@ contract("Fountain", ([owner, creator, sustainer]) => {
     it("initializes MoneyPool for an uninitialized address", async () => {
       const target = 100;
       const duration = 30;
-      const result = await fountain.createMoneyPool(target, duration, {
+      const result = await fountain.createMoneyPool(target, duration, mock.address, {
         from: creator,
       });
       await assertSustainabilityTarget(
@@ -153,16 +151,16 @@ contract("Fountain", ([owner, creator, sustainer]) => {
         1,
         "Only one moneyPool should exist"
       );
-      truffleAssert.eventEmitted(result, "MoneyPoolCreated");
+      truffleAssert.eventEmitted(result, "CreateMoneyPool");
     });
 
     it("fails to initialize MoneyPool for already initialized address", async () => {
       const target = 100;
       const duration = 30;
-      await fountain.createMoneyPool(target, duration, {
+      await fountain.createMoneyPool(target, duration, mock.address, {
         from: creator,
       });
-      const result = fountain.createMoneyPool(target, duration, {
+      const result = fountain.createMoneyPool(target, duration, mock.address, {
         from: creator,
       });
       truffleAssert.fails(result, truffleAssert.ErrorType.REVERT);
@@ -179,7 +177,7 @@ contract("Fountain", ([owner, creator, sustainer]) => {
       await mock.givenAnyReturnBool(true);
       // instantiate Fountain with mocked contract
       fountain = await Fountain.new(mock.address); // create new instance each test
-      await fountain.createMoneyPool(initialTarget, initialDuration, {
+      await fountain.createMoneyPool(initialTarget, initialDuration, mock.address, {
         from: creator,
       });
     });
@@ -187,11 +185,11 @@ contract("Fountain", ([owner, creator, sustainer]) => {
     it("updates existing MoneyPool", async () => {
       const target = 200;
       const duration = 50;
-      const result = await fountain.updateMoneyPool(target, duration, {
+      const result = await fountain.updateMoneyPool(target, duration, mock.address, {
         // Using address that has already created a MoneyPool
         from: creator,
       });
-      truffleAssert.eventEmitted(result, "MoneyPoolUpdated", {
+      truffleAssert.eventEmitted(result, "UpdateMoneyPool", {
         // Including params doesn't work, tried with various param numbers.
         // `AssertionError: Event filter for MoneyPoolUpdated returned no results`.
         // param3: target,
@@ -216,7 +214,7 @@ contract("Fountain", ([owner, creator, sustainer]) => {
       const target = 100;
       const duration = 30;
       await truffleAssert.fails(
-        fountain.updateMoneyPool(target, duration, {
+        fountain.updateMoneyPool(target, duration, mock.address, {
           // Using address that has not created a MoneyPool
           from: sustainer,
         }),
@@ -235,7 +233,7 @@ contract("Fountain", ([owner, creator, sustainer]) => {
       await mock.givenAnyReturnBool(true);
       // instantiate Fountain with mocked contract
       fountain = await Fountain.new(mock.address); // create new instance each test
-      await fountain.createMoneyPool(initialTarget, initialDuration, {
+      await fountain.createMoneyPool(initialTarget, initialDuration, mock.address, {
         from: creator,
       });
     });
@@ -250,7 +248,7 @@ contract("Fountain", ([owner, creator, sustainer]) => {
         expectedSustainabilityPoolAmount: 10,
         expectedRedistributionPoolAmount: 0,
         expectedSustainerCount: 1,
-        expectedSustainedAddressCount: 1,
+        expectedSustainedAddresses: [creator],
       },
       {
         description: "sustainment equal to target",
@@ -261,7 +259,7 @@ contract("Fountain", ([owner, creator, sustainer]) => {
         expectedSustainabilityPoolAmount: 100,
         expectedRedistributionPoolAmount: 0,
         expectedSustainerCount: 1,
-        expectedSustainedAddressCount: 1,
+        expectedSustainedAddresses: [creator],
       },
       {
         description: "sustainment greater than target",
@@ -272,7 +270,7 @@ contract("Fountain", ([owner, creator, sustainer]) => {
         expectedSustainabilityPoolAmount: 100,
         expectedRedistributionPoolAmount: 0, // Redistribution hasn't triggered yet
         expectedSustainerCount: 1,
-        expectedSustainedAddressCount: 1,
+        expectedSustainedAddresses: [creator],
       },
     ];
 
@@ -282,7 +280,7 @@ contract("Fountain", ([owner, creator, sustainer]) => {
           // Using address that did not create the MoneyPool
           from: sustainer,
         });
-        truffleAssert.eventEmitted(result, "MoneyPoolSustained");
+        truffleAssert.eventEmitted(result, "SustainMoneyPool");
 
         await assertCurrentSustainment(
           fountain,
@@ -322,10 +320,10 @@ contract("Fountain", ([owner, creator, sustainer]) => {
           scenario.expectedRedistributionPoolAmount,
           "Invalid redistributionPool amount"
         );
-        await assertSustainedAddressCount(
+        await assertSustainedAddresses(
           fountain,
           sustainer,
-          scenario.expectedSustainedAddressCount,
+          scenario.expectedSustainedAddresses,
           "Invalid sustainedAddressCount amount"
         );
       });
