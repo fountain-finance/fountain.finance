@@ -272,10 +272,13 @@ contract FountainV1 {
         //https://ethereum.stackexchange.com/questions/60028/testing-transfer-of-tokens-with-truffle
         // Got it working in tests using MockContract, but need to verify it works in testnet.
         // Move the full sustainment amount to this address.
-        IERC20(currentMoneyPool.want).transferFrom(
-            msg.sender,
-            address(this),
-            amount
+        require(
+            IERC20(currentMoneyPool.want).transferFrom(
+                msg.sender,
+                address(this),
+                amount
+            ),
+            "ERC20 transfer failed"
         );
 
         // Increment the funds that can be collected from sustainability.
