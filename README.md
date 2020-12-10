@@ -4,6 +4,9 @@
 
 ###### An experiment in composable fundraising, income streams, surplus redistribution, and sustainable growth on Ethereum.
 
+### Blog post introduction
+https://joaoritter.medium.com/%EF%B8%8F-fountain-finance-1f2b5a33cb10
+
 ### Mechanism
 
 1. Define what sustainability means to your project over a specified period of time.
