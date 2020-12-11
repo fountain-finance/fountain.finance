@@ -175,6 +175,7 @@ contract FountainV1 {
     /// @notice Creates a MoneyPool to be sustained for the sending address.
     /// @param target The sustainability target for the MoneyPool, in DAI.
     /// @param duration The duration of the MoneyPool, which starts once this is created.
+    /// @param want The ERC20 token desired, currently only DAI is supported.
     /// @return success If the creation was successful.
     function createMoneyPool(
         uint256 target,
@@ -333,7 +334,7 @@ contract FountainV1 {
     /// @param amount The amount to collect.
     /// @param from The MoneyPool to collect from.
     /// @return success If the collecting was a success.
-    function collectRedistributions(uint256 amount, address from)
+    function collectRedistributionsFromAddress(uint256 amount, address from)
         external
         returns (bool success)
     {
@@ -346,10 +347,10 @@ contract FountainV1 {
     /// @param amount The amount to collect.
     /// @param from The MoneyPools to collect from.
     /// @return success If the collecting was a success.
-    function collectRedistributions(uint256 amount, address[] calldata from)
-        external
-        returns (bool success)
-    {
+    function collectRedistributionsFromAddresses(
+        uint256 amount,
+        address[] calldata from
+    ) external returns (bool success) {
         for (uint256 i = 0; i < from.length; i++) {
             _redistributeMoneyPool(from[i]);
         }
