@@ -41,8 +41,6 @@ contract FountainV1 {
 
     /// @notice The MoneyPool structure represents a MoneyPool stewarded by an address, and accounts for which addresses have contributed to it.
     struct MoneyPool {
-        // The id of the money pool. Id's are sequential across Fountain.
-        uint256 id;
         // The address who defined this MoneyPool and who has access to its sustainments.
         address who;
         // The token that this MoneyPool can be funded with.
@@ -209,7 +207,6 @@ contract FountainV1 {
         newMoneyPool.want = want;
         newMoneyPool.exists = true;
         newMoneyPool.previousMoneyPoolId = 0;
-        newMoneyPool.id = moneyPoolCount;
 
         latestMoneyPoolIds[msg.sender] = moneyPoolCount;
 
@@ -456,11 +453,7 @@ contract FountainV1 {
 
         // No pending moneyPool found, clone the latest moneyPool
         moneyPoolId = _getLatestMoneyPoolId(who);
-        // The updated MoneyPool should start now.
-        MoneyPool storage moneyPool = _createMoneyPoolFromId(moneyPoolId, now);
-        moneyPools[moneyPoolId] = moneyPool;
-        latestMoneyPoolIds[who] = moneyPoolId;
-        return moneyPoolId;
+        return _createMoneyPoolFromId(moneyPoolId, now);
     }
 
     /// @dev Only active MoneyPools can be sustained.
@@ -488,14 +481,7 @@ contract FountainV1 {
             latestMoneyPool.start.add(latestMoneyPool.duration),
             latestMoneyPool.duration
         );
-        MoneyPool storage newMoneyPool = _createMoneyPoolFromId(
-            moneyPoolId,
-            start
-        );
-        moneyPools[moneyPoolId] = newMoneyPool;
-        latestMoneyPoolIds[who] = newMoneyPool.id;
-
-        return moneyPoolId;
+        return _createMoneyPoolFromId(moneyPoolId, start);
     }
 
     /// @dev Proportionally allocate the specified amount to the contributors of the specified MoneyPool,
@@ -583,10 +569,10 @@ contract FountainV1 {
     /// @dev Returns a copy of the given MoneyPool with reset sustainments.
     /// @param moneyPoolId The id of the MoneyPool to base the new MoneyPool on.
     /// @param start The start date to use for the new MoneyPool.
-    /// @return MoneyPool The new MoneyPool.
+    /// @return newMoneyPoolId The new MoneyPool ID.
     function _createMoneyPoolFromId(uint256 moneyPoolId, uint256 start)
         private
-        returns (MoneyPool storage)
+        returns (uint256 newMoneyPoolId)
     {
         MoneyPool storage currentMoneyPool = moneyPools[moneyPoolId];
         require(
@@ -607,7 +593,8 @@ contract FountainV1 {
         moneyPool.want = currentMoneyPool.want;
         moneyPool.exists = true;
         moneyPool.previousMoneyPoolId = moneyPoolId;
-        moneyPool.id = moneyPoolCount;
+
+        latestMoneyPoolIds[currentMoneyPool.who] = moneyPoolCount;
 
         emit UpdateMoneyPool(
             moneyPoolCount,
@@ -617,7 +604,7 @@ contract FountainV1 {
             moneyPool.want
         );
 
-        return moneyPool;
+        return moneyPoolCount;
     }
 
     /// @dev Returns a copy of the gi
