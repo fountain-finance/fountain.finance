@@ -11,19 +11,19 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 @title Fountain
 
 Create a MoneyPool (MP) that'll be used to sustain your project, and specify what its sustainability target is.
-Maybe your project is providing a service or public good, maybe it's being a YouTuber, engineer, or artist -- or anything else. 
+Maybe your project is providing a service or public good, maybe it's being a YouTuber, engineer, or artist -- or anything else.
 Anyone with your address can help sustain your project, and once you're sustainable any additional contributions are redistributed back your sustainers.
 
 Each MoneyPool is like a tier of the fountain, and the predefined cost to pursue the project is like the bounds of that tier's pool.
 
-An address can only be associated with one active MoneyPool at a time, as well as a mutable one queued up for when the active MoneyPool expires. 
-If a MoneyPool expires without one queued, the current one will be cloned and sustainments at that time will be allocated to it. 
-It's impossible for a MoneyPool's sustainability or duration to be changed once there has been a sustainment made to it. 
+An address can only be associated with one active MoneyPool at a time, as well as a mutable one queued up for when the active MoneyPool expires.
+If a MoneyPool expires without one queued, the current one will be cloned and sustainments at that time will be allocated to it.
+It's impossible for a MoneyPool's sustainability or duration to be changed once there has been a sustainment made to it.
 Any attempts to do so will just create/update the message sender's queued MP.
 
 You can collect funds of yours from the sustainers pool (where MoneyPool surplus is distributed) or from the sustainability pool (where MoneyPool sustainments are kept) at anytime.
 
-Future versions will introduce MoneyPool dependencies so that your project's surplus can get redistributed to the MP of projects it is composed of before reaching sustainers. 
+Future versions will introduce MoneyPool dependencies so that your project's surplus can get redistributed to the MP of projects it is composed of before reaching sustainers.
 We also think it may be best to create a governance token WATER and route ~7% of ecosystem surplus to token holders, ~3% to fountain.finance contributors (which can be run through Fountain itself), and the rest to sustainers.
 
 The basin of the Fountain should always be the sustainers of projects.
@@ -175,6 +175,7 @@ contract FountainV1 {
     /// @notice Creates a MoneyPool to be sustained for the sending address.
     /// @param target The sustainability target for the MoneyPool, in DAI.
     /// @param duration The duration of the MoneyPool, which starts once this is created.
+    /// @param want The ERC20 token desired, currently only DAI is supported.
     /// @return success If the creation was successful.
     function createMoneyPool(
         uint256 target,
@@ -272,10 +273,13 @@ contract FountainV1 {
         //https://ethereum.stackexchange.com/questions/60028/testing-transfer-of-tokens-with-truffle
         // Got it working in tests using MockContract, but need to verify it works in testnet.
         // Move the full sustainment amount to this address.
-        IERC20(currentMoneyPool.want).transferFrom(
-            msg.sender,
-            address(this),
-            amount
+        require(
+            IERC20(currentMoneyPool.want).transferFrom(
+                msg.sender,
+                address(this),
+                amount
+            ),
+            "ERC20 transfer failed"
         );
 
         // Increment the funds that can be collected from sustainability.
@@ -330,7 +334,7 @@ contract FountainV1 {
     /// @param amount The amount to collect.
     /// @param from The MoneyPool to collect from.
     /// @return success If the collecting was a success.
-    function collectRedistributions(uint256 amount, address from)
+    function collectRedistributionsFromAddress(uint256 amount, address from)
         external
         returns (bool success)
     {
@@ -343,10 +347,10 @@ contract FountainV1 {
     /// @param amount The amount to collect.
     /// @param from The MoneyPools to collect from.
     /// @return success If the collecting was a success.
-    function collectRedistributions(uint256 amount, address[] calldata from)
-        external
-        returns (bool success)
-    {
+    function collectRedistributionsFromAddresses(
+        uint256 amount,
+        address[] calldata from
+    ) external returns (bool success) {
         for (uint256 i = 0; i < from.length; i++) {
             _redistributeMoneyPool(from[i]);
         }
@@ -453,12 +457,7 @@ contract FountainV1 {
 
         // No pending moneyPool found, clone the latest moneyPool
         moneyPoolId = _getLatestMoneyPoolId(who);
-
-        // The updated MoneyPool should start now.
-        MoneyPool storage moneyPool = _createMoneyPoolFromId(moneyPoolId, now);
-        moneyPools[moneyPoolId] = moneyPool;
-        latestMoneyPoolIds[who] = moneyPoolId;
-        return moneyPoolId;
+        return _createMoneyPoolFromId(moneyPoolId, now);
     }
 
     /// @dev Only active MoneyPools can be sustained.
@@ -486,13 +485,7 @@ contract FountainV1 {
             latestMoneyPool.start.add(latestMoneyPool.duration),
             latestMoneyPool.duration
         );
-        MoneyPool storage newMoneyPool = _createMoneyPoolFromId(
-            moneyPoolId,
-            start
-        );
-        moneyPools[moneyPoolId] = newMoneyPool;
-
-        return moneyPoolId;
+        return _createMoneyPoolFromId(moneyPoolId, start);
     }
 
     /// @dev Proportionally allocate the specified amount to the contributors of the specified MoneyPool,
@@ -580,10 +573,10 @@ contract FountainV1 {
     /// @dev Returns a copy of the given MoneyPool with reset sustainments.
     /// @param moneyPoolId The id of the MoneyPool to base the new MoneyPool on.
     /// @param start The start date to use for the new MoneyPool.
-    /// @return MoneyPool The new MoneyPool.
+    /// @return newMoneyPoolId The new MoneyPool ID.
     function _createMoneyPoolFromId(uint256 moneyPoolId, uint256 start)
         private
-        returns (MoneyPool storage)
+        returns (uint256 newMoneyPoolId)
     {
         MoneyPool storage currentMoneyPool = moneyPools[moneyPoolId];
         require(
@@ -603,7 +596,9 @@ contract FountainV1 {
         moneyPool.duration = currentMoneyPool.duration;
         moneyPool.want = currentMoneyPool.want;
         moneyPool.exists = true;
-        moneyPool.previousMoneyPoolId = moneyPoolCount;
+        moneyPool.previousMoneyPoolId = moneyPoolId;
+
+        latestMoneyPoolIds[currentMoneyPool.who] = moneyPoolCount;
 
         emit UpdateMoneyPool(
             moneyPoolCount,
@@ -613,7 +608,7 @@ contract FountainV1 {
             moneyPool.want
         );
 
-        return moneyPool;
+        return moneyPoolCount;
     }
 
     /// @dev Returns a copy of the gi
