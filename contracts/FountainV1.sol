@@ -453,7 +453,9 @@ contract FountainV1 {
 
         // No pending moneyPool found, clone the latest moneyPool
         moneyPoolId = _getLatestMoneyPoolId(who);
-        MoneyPool storage moneyPool = _createMoneyPoolFromId(moneyPoolId);
+
+        // The updated MoneyPool should start now.
+        MoneyPool storage moneyPool = _createMoneyPoolFromId(moneyPoolId, now);
         moneyPools[moneyPoolId] = moneyPool;
         latestMoneyPoolIds[who] = moneyPoolId;
         return moneyPoolId;
@@ -477,9 +479,18 @@ contract FountainV1 {
 
         // No pending moneyPool found, clone the latest moneyPool
         moneyPoolId = _getLatestMoneyPoolId(who);
-        MoneyPool storage moneyPool = _createMoneyPoolFromId(moneyPoolId);
-        moneyPools[moneyPoolId] = moneyPool;
-        latestMoneyPoolIds[who] = moneyPoolId;
+        MoneyPool storage latestMoneyPool = moneyPools[moneyPoolId];
+        // Use a start date that's a multiple of the duration.
+        // This creates the effect that there have been scheduled MoneyPools ever since the `latest`, even if `latest` is a long time in the past.
+        uint256 start = _determineModuloStart(
+            latestMoneyPool.start.add(latestMoneyPool.duration),
+            latestMoneyPool.duration
+        );
+        MoneyPool storage newMoneyPool = _createMoneyPoolFromId(
+            moneyPoolId,
+            start
+        );
+        moneyPools[moneyPoolId] = newMoneyPool;
 
         return moneyPoolId;
     }
@@ -566,9 +577,11 @@ contract FountainV1 {
         }
     }
 
-    /// @dev Returns a copy of the given MoneyPool with reset sustainments, and
-    /// @dev that starts when the given MoneyPool expired.
-    function _createMoneyPoolFromId(uint256 moneyPoolId)
+    /// @dev Returns a copy of the given MoneyPool with reset sustainments.
+    /// @param moneyPoolId The id of the MoneyPool to base the new MoneyPool on.
+    /// @param start The start date to use for the new MoneyPool.
+    /// @return MoneyPool The new MoneyPool.
+    function _createMoneyPoolFromId(uint256 moneyPoolId, uint256 start)
         private
         returns (MoneyPool storage)
     {
@@ -586,9 +599,7 @@ contract FountainV1 {
         moneyPool.who = currentMoneyPool.who;
         moneyPool.sustainabilityTarget = currentMoneyPool.sustainabilityTarget;
         moneyPool.currentSustainment = 0;
-        moneyPool.start = currentMoneyPool.start.add(
-            currentMoneyPool.duration.mul(1 days)
-        );
+        moneyPool.start = start;
         moneyPool.duration = currentMoneyPool.duration;
         moneyPool.want = currentMoneyPool.want;
         moneyPool.exists = true;
@@ -603,6 +614,20 @@ contract FountainV1 {
         );
 
         return moneyPool;
+    }
+
+    /// @dev Returns a copy of the gi
+    /// @dev that starts when the given MoneyPool expired.
+    function _determineModuloStart(uint256 oldEnd, uint256 duration)
+        private
+        view
+        returns (uint256)
+    {
+        // Use the old end if the current time is still within the duration.
+        if (oldEnd.add(duration) > now) return oldEnd;
+        // Otherwise, use the closest multiple of the duration from the old end.
+        uint256 distanceToStart = (now.sub(oldEnd)).mod(duration);
+        return now.sub(distanceToStart);
     }
 
     function _state(uint256 moneyPoolId) private view returns (MoneyPoolState) {
