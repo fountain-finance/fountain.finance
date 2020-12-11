@@ -11,19 +11,19 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 @title Fountain
 
 Create a MoneyPool (MP) that'll be used to sustain your project, and specify what its sustainability target is.
-Maybe your project is providing a service or public good, maybe it's being a YouTuber, engineer, or artist -- or anything else. 
+Maybe your project is providing a service or public good, maybe it's being a YouTuber, engineer, or artist -- or anything else.
 Anyone with your address can help sustain your project, and once you're sustainable any additional contributions are redistributed back your sustainers.
 
 Each MoneyPool is like a tier of the fountain, and the predefined cost to pursue the project is like the bounds of that tier's pool.
 
-An address can only be associated with one active MoneyPool at a time, as well as a mutable one queued up for when the active MoneyPool expires. 
-If a MoneyPool expires without one queued, the current one will be cloned and sustainments at that time will be allocated to it. 
-It's impossible for a MoneyPool's sustainability or duration to be changed once there has been a sustainment made to it. 
+An address can only be associated with one active MoneyPool at a time, as well as a mutable one queued up for when the active MoneyPool expires.
+If a MoneyPool expires without one queued, the current one will be cloned and sustainments at that time will be allocated to it.
+It's impossible for a MoneyPool's sustainability or duration to be changed once there has been a sustainment made to it.
 Any attempts to do so will just create/update the message sender's queued MP.
 
 You can collect funds of yours from the sustainers pool (where MoneyPool surplus is distributed) or from the sustainability pool (where MoneyPool sustainments are kept) at anytime.
 
-Future versions will introduce MoneyPool dependencies so that your project's surplus can get redistributed to the MP of projects it is composed of before reaching sustainers. 
+Future versions will introduce MoneyPool dependencies so that your project's surplus can get redistributed to the MP of projects it is composed of before reaching sustainers.
 We also think it may be best to create a governance token WATER and route ~7% of ecosystem surplus to token holders, ~3% to fountain.finance contributors (which can be run through Fountain itself), and the rest to sustainers.
 
 The basin of the Fountain should always be the sustainers of projects.
@@ -41,6 +41,8 @@ contract FountainV1 {
 
     /// @notice The MoneyPool structure represents a MoneyPool stewarded by an address, and accounts for which addresses have contributed to it.
     struct MoneyPool {
+        // The id of the money pool. Id's are sequential across Fountain.
+        uint256 id;
         // The address who defined this MoneyPool and who has access to its sustainments.
         address who;
         // The token that this MoneyPool can be funded with.
@@ -207,6 +209,7 @@ contract FountainV1 {
         newMoneyPool.want = want;
         newMoneyPool.exists = true;
         newMoneyPool.previousMoneyPoolId = 0;
+        newMoneyPool.id = moneyPoolCount;
 
         latestMoneyPoolIds[msg.sender] = moneyPoolCount;
 
@@ -453,7 +456,6 @@ contract FountainV1 {
 
         // No pending moneyPool found, clone the latest moneyPool
         moneyPoolId = _getLatestMoneyPoolId(who);
-
         // The updated MoneyPool should start now.
         MoneyPool storage moneyPool = _createMoneyPoolFromId(moneyPoolId, now);
         moneyPools[moneyPoolId] = moneyPool;
@@ -491,6 +493,7 @@ contract FountainV1 {
             start
         );
         moneyPools[moneyPoolId] = newMoneyPool;
+        latestMoneyPoolIds[who] = newMoneyPool.id;
 
         return moneyPoolId;
     }
@@ -603,7 +606,8 @@ contract FountainV1 {
         moneyPool.duration = currentMoneyPool.duration;
         moneyPool.want = currentMoneyPool.want;
         moneyPool.exists = true;
-        moneyPool.previousMoneyPoolId = moneyPoolCount;
+        moneyPool.previousMoneyPoolId = moneyPoolId;
+        moneyPool.id = moneyPoolCount;
 
         emit UpdateMoneyPool(
             moneyPoolCount,
