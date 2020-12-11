@@ -22,6 +22,65 @@ const assertSustainabilityTarget = async (
   assert.equal(currentTarget, target, message);
 };
 
+const assertCreateMoneyPoolEvent = async (
+  tx,
+  instance,
+  creator, 
+  target, 
+  duration, 
+  want,
+  message
+) => {
+  const currentCount = (await instance.moneyPoolCount()).toString();
+  truffleAssert.eventEmitted(tx, "CreateMoneyPool", (ev) => {
+    return (
+      ev.id.toString() === currentCount &&
+      ev.by === creator &&
+      ev.sustainabilityTarget.toString() === target &&
+      ev.duration.toString() === duration &&
+      ev.want === want
+    )
+  }, message);
+};
+
+const assertUpdateMoneyPoolEvent = async (
+  tx,
+  instance,
+  creator, 
+  target, 
+  duration, 
+  want,
+  message
+) => {
+  const currentCount = (await instance.moneyPoolCount()).toString();
+  truffleAssert.eventEmitted(tx, "UpdateMoneyPool", (ev) => {
+    return (
+      ev.id.toString() === currentCount &&
+      ev.by === creator &&
+      ev.sustainabilityTarget.toString() === target &&
+      ev.duration.toString() === duration &&
+      ev.want === want
+    )
+  }, message);
+};
+
+const assertSustainMoneyPoolEvent = async (
+  tx,
+  instance,
+  sustainer,
+  amount,
+  message
+) => {
+  const currentCount = (await instance.moneyPoolCount()).toString();
+  truffleAssert.eventEmitted(tx, "SustainMoneyPool", (ev) => {
+    return (
+      ev.id.toString() === currentCount &&
+      ev.sustainer === sustainer &&
+      ev.amount.toString() === amount.toString()
+    )
+  }, message);
+};
+
 const assertSustainerCount = async (instance, address, count, message) => {
   const sustainerCount = (await instance.getSustainerCount(address)).toNumber();
   assert.equal(sustainerCount, count, message);
@@ -134,8 +193,8 @@ contract("Fountain", ([owner, creator, sustainer]) => {
     });
 
     it("initializes MoneyPool for an uninitialized address", async () => {
-      const target = 100;
-      const duration = 30;
+      const target = "100";
+      const duration = "30";
       const result = await fountain.createMoneyPool(target, duration, mock.address, {
         from: creator,
       });
@@ -151,7 +210,15 @@ contract("Fountain", ([owner, creator, sustainer]) => {
         1,
         "Only one moneyPool should exist"
       );
-      truffleAssert.eventEmitted(result, "CreateMoneyPool");
+      await assertCreateMoneyPoolEvent(
+        result, 
+        fountain, 
+        creator, 
+        target, 
+        duration, 
+        mock.address,
+        "Invalid CreateMoneyPool event"
+      );
     });
 
     it("fails to initialize MoneyPool for already initialized address", async () => {
@@ -183,19 +250,21 @@ contract("Fountain", ([owner, creator, sustainer]) => {
     });
 
     it("updates existing MoneyPool", async () => {
-      const target = 200;
-      const duration = 50;
+      const target = "200";
+      const duration = "50";
       const result = await fountain.updateMoneyPool(target, duration, mock.address, {
         // Using address that has already created a MoneyPool
         from: creator,
       });
-      truffleAssert.eventEmitted(result, "UpdateMoneyPool", {
-        // Including params doesn't work, tried with various param numbers.
-        // `AssertionError: Event filter for MoneyPoolUpdated returned no results`.
-        // param3: target,
-        // param4: duration,
-      });
-
+      await assertUpdateMoneyPoolEvent(
+        result, 
+        fountain, 
+        creator, 
+        target, 
+        duration, 
+        mock.address,
+        "Invalid UpdateMoneyPool event"
+      );
       await assertSustainabilityTarget(
         fountain,
         creator,
@@ -280,8 +349,13 @@ contract("Fountain", ([owner, creator, sustainer]) => {
           // Using address that did not create the MoneyPool
           from: sustainer,
         });
-        truffleAssert.eventEmitted(result, "SustainMoneyPool");
-
+        await assertSustainMoneyPoolEvent(
+          result, 
+          fountain, 
+          sustainer, 
+          scenario.amount,
+          "Invalid SustainMoneyPool event"
+        );
         await assertCurrentSustainment(
           fountain,
           creator,
