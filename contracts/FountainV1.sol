@@ -486,12 +486,11 @@ contract FountainV1 {
             latestMoneyPool.start.add(latestMoneyPool.duration),
             latestMoneyPool.duration
         );
-        MoneyPool storage moneyPool = _createMoneyPoolFromId(
+        MoneyPool storage newMoneyPool = _createMoneyPoolFromId(
             moneyPoolId,
             start
         );
-        moneyPools[moneyPoolId] = moneyPool;
-        latestMoneyPoolIds[who] = moneyPoolId;
+        moneyPools[moneyPoolId] = newMoneyPool;
 
         return moneyPoolId;
     }
@@ -625,10 +624,10 @@ contract FountainV1 {
         returns (uint256)
     {
         // Use the old end if the current time is still within the duration.
-        if (oldEnd + duration > now) return oldEnd;
+        if (oldEnd.add(duration) > now) return oldEnd;
         // Otherwise, use the closest multiple of the duration from the old end.
-        uint256 distanceToStart = (now - oldEnd).mod(duration);
-        return now - distanceToStart;
+        uint256 distanceToStart = (now.sub(oldEnd)).mod(duration);
+        return now.sub(distanceToStart);
     }
 
     function _state(uint256 moneyPoolId) private view returns (MoneyPoolState) {
