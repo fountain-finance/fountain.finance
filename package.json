@@ -5,7 +5,9 @@
     "compile": "truffle compile",
     "test": "truffle test",
     "remix": "remixd -s . --remix-ide https://remix.ethereum.org",
-    "deploy-ropsten": "truffle deploy --network ropsten"
+    "deploy-ropsten": "truffle deploy --network ropsten",
+    "migrate": "truffle migrate -network development",
+    "ganache": "ganache-cli -p 8545"
   },
   "repository": {
     "type": "git",
@@ -21,6 +23,8 @@
     "@openzeppelin/contracts": "^3.2.0"
   },
   "devDependencies": {
+    "ganache-cli": "^6.12.1",
+    "live-server": "^1.2.1",
     "@gnosis.pm/mock-contract": "^4.0.0",
     "@truffle/hdwallet-provider": "^1.2.0",
     "remixd": "^0.2.4-alpha.0",
