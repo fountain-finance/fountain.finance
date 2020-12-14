@@ -6,6 +6,9 @@ const {
   assertDuration,
   assertSustainabilityTarget,
   assertSustainerCount,
+  assertCreateMoneyPoolEvent,
+  assertUpdateMoneyPoolEvent,
+  assertSustainMoneyPoolEvent,
   assertCurrentSustainment,
   assertSustainmentTrackerAmount,
   assertRedistributionTrackerAmount,
@@ -74,7 +77,15 @@ contract("Fountain", ([owner, creator, sustainer]) => {
         1,
         "Only one moneyPool should exist"
       );
-      truffleAssert.eventEmitted(result, "CreateMoneyPool");
+      await assertCreateMoneyPoolEvent(
+        result, 
+        fountain, 
+        creator, 
+        target, 
+        duration, 
+        erc20Mock.address,
+        "Invalid CreateMoneyPool event"
+      );
     });
 
     it("fails to initialize MoneyPool for already initialized address", async () => {
@@ -127,13 +138,15 @@ contract("Fountain", ([owner, creator, sustainer]) => {
           from: creator,
         }
       );
-      truffleAssert.eventEmitted(result, "UpdateMoneyPool", {
-        // Including params doesn't work, tried with various param numbers.
-        // `AssertionError: Event filter for MoneyPoolUpdated returned no results`.
-        // param3: target,
-        // param4: duration,
-      });
-
+      await assertUpdateMoneyPoolEvent(
+        result, 
+        fountain, 
+        creator, 
+        target, 
+        duration, 
+        erc20Mock.address,
+        "Invalid UpdateMoneyPool event"
+      );
       await assertSustainabilityTarget(
         fountain,
         creator,
@@ -227,8 +240,13 @@ contract("Fountain", ([owner, creator, sustainer]) => {
           // Using address that did not create the MoneyPool
           from: sustainer,
         });
-        truffleAssert.eventEmitted(result, "SustainMoneyPool");
-
+        await assertSustainMoneyPoolEvent(
+          result, 
+          fountain, 
+          sustainer, 
+          scenario.amount,
+          "Invalid SustainMoneyPool event"
+        );
         await assertCurrentSustainment(
           fountain,
           creator,

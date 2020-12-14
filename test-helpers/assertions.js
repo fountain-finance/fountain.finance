@@ -33,6 +33,65 @@ exports.assertSustainerCount = async (instance, address, count, message) => {
   assert.equal(sustainerCount, count, message);
 };
 
+exports.assertCreateMoneyPoolEvent = async (
+  tx,
+  instance,
+  creator, 
+  target, 
+  duration, 
+  want,
+  message
+) => {
+  const currentCount = (await instance.moneyPoolCount()).toString();
+  truffleAssert.eventEmitted(tx, "CreateMoneyPool", (ev) => {
+    return (
+      ev.id.toString() === currentCount &&
+      ev.by === creator &&
+      ev.sustainabilityTarget.toString() === target.toString() &&
+      ev.duration.toString() === duration.toString() &&
+      ev.want === want
+    )
+  }, message);
+};
+
+exports.assertUpdateMoneyPoolEvent = async (
+  tx,
+  instance,
+  creator, 
+  target, 
+  duration, 
+  want,
+  message
+) => {
+  const currentCount = (await instance.moneyPoolCount()).toString();
+  truffleAssert.eventEmitted(tx, "UpdateMoneyPool", (ev) => {
+    return (
+      ev.id.toString() === currentCount &&
+      ev.by === creator &&
+      ev.sustainabilityTarget.toString() === target.toString() &&
+      ev.duration.toString() === duration.toString() &&
+      ev.want === want
+    )
+  }, message);
+};
+
+exports.assertSustainMoneyPoolEvent = async (
+  tx,
+  instance,
+  sustainer,
+  amount,
+  message
+) => {
+  const currentCount = (await instance.moneyPoolCount()).toString();
+  truffleAssert.eventEmitted(tx, "SustainMoneyPool", (ev) => {
+    return (
+      ev.id.toString() === currentCount &&
+      ev.sustainer === sustainer &&
+      ev.amount.toString() === amount.toString()
+    )
+  }, message);
+};
+
 exports.assertCurrentSustainment = async (
   instance,
   address,
