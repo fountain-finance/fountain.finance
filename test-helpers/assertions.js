@@ -46,10 +46,7 @@ exports.assertInitializeMoneyPoolEvent = async (
   truffleAssert.eventEmitted(tx, "InitializeMoneyPool", (ev) => {
     return (
       ev.id.toString() === currentCount &&
-      ev.owner === creator &&
-      ev.sustainabilityTarget.toString() === target.toString() &&
-      ev.duration.toString() === duration.toString() &&
-      ev.want === want
+      ev.owner === creator
     )
   }, message);
 };
