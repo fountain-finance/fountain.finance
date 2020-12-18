@@ -215,6 +215,7 @@ contract("Fountain", ([owner, creator, sustainer]) => {
         await assertSustainMoneyPoolEvent(
           result, 
           fountain, 
+          creator,
           sustainer, 
           scenario.amount,
           "Invalid SustainMoneyPool event"

@@ -115,6 +115,7 @@ contract FountainV1 {
 
     event SustainMoneyPool(
         uint256 indexed id,
+        address indexed owner,
         address indexed sustainer,
         uint256 amount
     );
@@ -265,7 +266,12 @@ contract FountainV1 {
         _updateTrackedRedistribution(currentMoneyPool);
 
         // Emit events.
-        emit SustainMoneyPool(moneyPoolId, msg.sender, amount);
+        emit SustainMoneyPool(
+            moneyPoolId,
+            currentMoneyPool.owner,
+            msg.sender,
+            amount
+        );
 
         if (wasInactive)
             // Emit an event since since is the first sustainment being made towards this MoneyPool.
