@@ -413,9 +413,8 @@ contract FountainV1 {
         MoneyPool storage newMoneyPool = moneyPools[moneyPoolCount];
         newMoneyPool.owner = owner;
         newMoneyPool.currentSustainment = 0;
-        newMoneyPool.start = now;
         newMoneyPool.exists = true;
-        newMoneyPool.previousMoneyPoolId = 0;
+        newMoneyPool.previousMoneyPoolId = latestMoneyPoolIds[owner];
 
         latestMoneyPoolIds[owner] = moneyPoolCount;
 
@@ -464,7 +463,11 @@ contract FountainV1 {
 
         if (moneyPoolId != 0) return _createMoneyPoolFromId(moneyPoolId, now);
 
-        return _initMoneyPoolId(owner);
+        moneyPoolId = _initMoneyPoolId(owner);
+        MoneyPool storage moneyPool = moneyPools[moneyPoolId];
+        moneyPool.start = now;
+
+        return moneyPoolId;
     }
 
     /// @dev Only active MoneyPools can be sustained.
@@ -598,18 +601,15 @@ contract FountainV1 {
             "Fountain::createMoneyPoolFromId: Invalid moneyPool"
         );
 
-        moneyPoolCount++;
+        uint256 id = _initMoneyPoolId(currentMoneyPool.owner);
         // Must create structs that have mappings using this approach to avoid
         // the RHS creating a memory-struct that contains a mapping.
         // See https://ethereum.stackexchange.com/a/72310
-        MoneyPool storage moneyPool = moneyPools[moneyPoolCount];
-        moneyPool.owner = currentMoneyPool.owner;
+        MoneyPool storage moneyPool = moneyPools[id];
         moneyPool.sustainabilityTarget = currentMoneyPool.sustainabilityTarget;
-        moneyPool.currentSustainment = 0;
         moneyPool.start = start;
         moneyPool.duration = currentMoneyPool.duration;
         moneyPool.want = currentMoneyPool.want;
-        moneyPool.exists = true;
         moneyPool.previousMoneyPoolId = moneyPoolId;
 
         latestMoneyPoolIds[currentMoneyPool.owner] = moneyPoolCount;
