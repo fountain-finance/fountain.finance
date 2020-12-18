@@ -10,3 +10,6 @@ contracts/artifacts/
 .env.production.local
 
 node_modules/
+
+# private
+.secret

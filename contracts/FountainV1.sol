@@ -72,8 +72,6 @@ contract FountainV1 {
         mapping(address => uint256) redistributionTracker;
     }
 
-    enum Pool {REDISTRIBUTION, SUSTAINABILITY}
-
     /// @notice The official record of all MoneyPools ever created
     mapping(uint256 => MoneyPool) public moneyPools;
 
