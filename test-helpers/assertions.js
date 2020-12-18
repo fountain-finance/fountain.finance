@@ -117,6 +117,7 @@ exports.assertActivateMoneyPoolEvent = async (
 exports.assertSustainMoneyPoolEvent = async (
   tx,
   instance,
+  creator,
   sustainer,
   amount,
   message
@@ -125,6 +126,7 @@ exports.assertSustainMoneyPoolEvent = async (
   truffleAssert.eventEmitted(tx, "SustainMoneyPool", (ev) => {
     return (
       ev.id.toString() === currentCount &&
+      ev.owner === creator &&
       ev.sustainer === sustainer &&
       ev.amount.toString() === amount.toString()
     )
