@@ -181,10 +181,10 @@ contract FountainV1 {
 
     /// @notice Contribute a specified amount to the sustainability of the specified address's active MoneyPool.
     /// @notice If the amount results in surplus, redistribute the surplus proportionally to sustainers of the MoneyPool.
-    /// @param who The owner of the MoneyPool to sustain.
+    /// @param owner The owner of the MoneyPool to sustain.
     /// @param amount Amount of sustainment.
     /// @return success If the sustainment was successful.
-    function sustain(address who, uint256 amount)
+    function sustain(address owner, uint256 amount)
         external
         returns (bool success)
     {
@@ -193,7 +193,7 @@ contract FountainV1 {
             "Fountain::sustain: The sustainment amount should be positive"
         );
 
-        uint256 moneyPoolId = _moneyPoolIdToSustain(who);
+        uint256 moneyPoolId = _moneyPoolIdToSustain(owner);
         MoneyPool storage currentMoneyPool = moneyPools[moneyPoolId];
 
         require(
@@ -242,7 +242,7 @@ contract FountainV1 {
         );
 
         // Increment the funds that can be collected from sustainability.
-        sustainabilityPool[who] = sustainabilityPool[who].add(
+        sustainabilityPool[owner] = sustainabilityPool[owner].add(
             sustainabilityAmount
         );
 
@@ -260,7 +260,7 @@ contract FountainV1 {
         if (isNewSustainer) currentMoneyPool.sustainers.push(msg.sender);
 
         // Add this address to the sustainer's list of sustained addresses
-        sustainedAddressesBySustainer[msg.sender].push(who);
+        sustainedAddressesBySustainer[msg.sender].push(owner);
 
         // Redistribution amounts may have changed for the current MoneyPool.
         _updateTrackedRedistribution(currentMoneyPool);
@@ -275,6 +275,7 @@ contract FountainV1 {
 
         if (wasInactive)
             // Emit an event since since is the first sustainment being made towards this MoneyPool.
+            // TODO: will emitting this event make the first sustainment of a MP significantly more costly in gas?
             emit ActivateMoneyPool(
                 moneyPoolCount,
                 currentMoneyPool.owner,
@@ -373,6 +374,10 @@ contract FountainV1 {
         require(
             want == DAI,
             "Fountain::configureMoneyPool: For now, a MoneyPool can only be funded with DAI"
+        );
+        require(
+            target > 0,
+            "Fountain::configureMoneyPool: A MoneyPool target must be a positive number"
         );
 
         uint256 moneyPoolId = _moneyPoolIdToConfigure(msg.sender);
@@ -494,9 +499,7 @@ contract FountainV1 {
             latestMoneyPool.duration
         );
 
-        uint256 newMoneyPoolId = _createMoneyPoolFromId(moneyPoolId, start);
-
-        return newMoneyPoolId;
+        return _createMoneyPoolFromId(moneyPoolId, start);
     }
 
     /// @dev Proportionally allocate the specified amount to the contributors of the specified MoneyPool,
@@ -611,7 +614,7 @@ contract FountainV1 {
         return moneyPoolCount;
     }
 
-    /// @dev Returns the date that that is the nearest multiple of duration from oldEnd.
+    /// @dev Returns the date that is the nearest multiple of duration from oldEnd.
     /// @return start The date.
     function _determineModuloStart(uint256 oldEnd, uint256 duration)
         private
