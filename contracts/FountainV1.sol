@@ -96,7 +96,7 @@ contract FountainV1 {
     // The contract currently only supports sustainments in DAI.
     address public DAI;
 
-    event CreateMoneyPool(
+    event InitializeMoneyPool(
         uint256 indexed id,
         address indexed owner,
         uint256 indexed sustainabilityTarget,
@@ -113,7 +113,7 @@ contract FountainV1 {
         address want
     );
 
-    event ReconfigureMoneyPool(
+    event ConfigureMoneyPool(
         uint256 indexed id,
         address indexed owner,
         uint256 indexed sustainabilityTarget,
@@ -186,63 +186,6 @@ contract FountainV1 {
         moneyPoolCount = 0;
     }
 
-    /// @notice Creates a MoneyPool to be sustained for the sending address.
-    /// @param target The sustainability target for the MoneyPool, in DAI.
-    /// @param duration The duration of the MoneyPool, which starts once this is created.
-    /// @param want The ERC20 token desired, currently only DAI is supported.
-    /// @return success If the creation was successful.
-    function createMoneyPool(
-        uint256 target,
-        uint256 duration,
-        address want
-    ) external returns (bool success) {
-        require(
-            latestMoneyPoolIds[msg.sender] == 0,
-            "Fountain::createMoneyPool: Address already owns a MoneyPool, call `update` instead"
-        );
-        require(
-            duration >= 1,
-            "Fountain::createMoneyPool: A MoneyPool must be at least one day long"
-        );
-        require(
-            want == DAI,
-            "Fountain::createMoneyPool: For now, a MoneyPool can only be funded with DAI"
-        );
-
-        moneyPoolCount++;
-        // Must create structs that have mappings using this approach to avoid
-        // the RHS creating a memory-struct that contains a mapping.
-        // See https://ethereum.stackexchange.com/a/72310
-        MoneyPool storage newMoneyPool = moneyPools[moneyPoolCount];
-        newMoneyPool.owner = msg.sender;
-        newMoneyPool.sustainabilityTarget = target;
-        newMoneyPool.currentSustainment = 0;
-        newMoneyPool.start = now;
-        newMoneyPool.duration = duration;
-        newMoneyPool.want = want;
-        newMoneyPool.exists = true;
-        newMoneyPool.previousMoneyPoolId = 0;
-
-        latestMoneyPoolIds[msg.sender] = moneyPoolCount;
-
-        emit CreateMoneyPool(
-            moneyPoolCount,
-            msg.sender,
-            target,
-            duration,
-            want
-        );
-        emit ReconfigureMoneyPool(
-            moneyPoolCount,
-            msg.sender,
-            target,
-            duration,
-            want
-        );
-
-        return true;
-    }
-
     /// @notice Contribute a specified amount to the sustainability of the specified address's active MoneyPool.
     /// @notice If the amount results in surplus, redistribute the surplus proportionally to sustainers of the MoneyPool.
     /// @param who The owner of the MoneyPool to sustain.
@@ -267,6 +210,10 @@ contract FountainV1 {
 
         bool wasInactive = currentMoneyPool.currentSustainment == 0;
 
+        // Save if the message sender is contributing to this MoneyPool for the first time.
+        bool isNewSustainer = currentMoneyPool.sustainmentTracker[msg.sender] ==
+            0;
+
         // The amount that should be reserved for the sustainability of the MoneyPool.
         // If the MoneyPool is already sustainable, set to 0.
         // If the MoneyPool is not yet sustainable even with the amount, set to the amount.
@@ -287,10 +234,6 @@ contract FountainV1 {
                 currentMoneyPool.currentSustainment
             );
         }
-
-        // Save if the message sender is contributing to this MoneyPool for the first time.
-        bool isNewSustainer = currentMoneyPool.sustainmentTracker[msg.sender] ==
-            0;
 
         // TODO: Not working.`Returned error: VM Exception while processing transaction: revert`
         //https://ethereum.stackexchange.com/questions/60028/testing-transfer-of-tokens-with-truffle
@@ -332,7 +275,7 @@ contract FountainV1 {
         // Emit events.
         emit SustainMoneyPool(moneyPoolId, msg.sender, amount);
 
-        if (wasInactive) {
+        if (wasInactive)
             // Emit an event since since is the first sustainment being made towards this MoneyPool.
             emit ActivateMoneyPool(
                 moneyPoolCount,
@@ -341,7 +284,6 @@ contract FountainV1 {
                 currentMoneyPool.duration,
                 currentMoneyPool.want
             );
-        }
 
         return true;
     }
@@ -415,43 +357,72 @@ contract FountainV1 {
         return true;
     }
 
-    /// @notice Reconfigures the sustainability target and duration of the sender's current MoneyPool if it hasn't yet received sustainments, or
+    /// @notice Configures the sustainability target and duration of the sender's current MoneyPool if it hasn't yet received sustainments, or
     /// @notice sets the properties of the MoneyPool that will take effect once the current MoneyPool expires.
     /// @param target The sustainability target to set.
     /// @param duration The duration to set.
     /// @param want The token that the MoneyPool wants.
     /// @return success If the update was successful.
-    function reconfigureMoneyPool(
+    function configureMoneyPool(
         uint256 target,
         uint256 duration,
         address want
     ) external returns (bool success) {
         require(
-            latestMoneyPoolIds[msg.sender] > 0,
-            "You don't yet own a MoneyPool."
+            duration >= 1,
+            "Fountain::configureMoneyPool: A MoneyPool must be at least one day long"
         );
         require(
             want == DAI,
-            "Fountain::updateMoneyPool: For now, a MoneyPool can only be funded with DAI"
+            "Fountain::configureMoneyPool: For now, a MoneyPool can only be funded with DAI"
         );
-        uint256 moneyPoolId = _moneyPoolIdToUpdate(msg.sender);
-        MoneyPool storage moneyPool = moneyPools[moneyPoolId];
-        if (target > 0) moneyPool.sustainabilityTarget = target;
-        if (duration > 0) moneyPool.duration = duration;
-        moneyPool.want = want;
 
-        emit ReconfigureMoneyPool(
-            moneyPoolId,
-            moneyPool.owner,
-            moneyPool.sustainabilityTarget,
-            moneyPool.duration,
-            moneyPool.want
+        uint256 moneyPoolId = _moneyPoolIdToConfigure(msg.sender);
+        MoneyPool storage moneyPool = moneyPools[moneyPoolId];
+        moneyPool.sustainabilityTarget = target;
+        moneyPool.duration = duration;
+        moneyPool.want = want;
+        if (moneyPool.previousMoneyPoolId == 0)
+            emit InitializeMoneyPool(
+                moneyPoolCount,
+                msg.sender,
+                target,
+                duration,
+                want
+            );
+
+        emit ConfigureMoneyPool(
+            moneyPoolCount,
+            msg.sender,
+            target,
+            duration,
+            want
         );
 
         return true;
     }
 
     // --- private --- //
+
+    /// @notice Initializes a MoneyPool to be sustained for the sending address.
+    /// @param owner The owner of the money pool being initialized.
+    /// @return id The initialized MoneyPool's id.
+    function _initMoneyPoolId(address owner) private returns (uint256 id) {
+        moneyPoolCount++;
+        // Must create structs that have mappings using this approach to avoid
+        // the RHS creating a memory-struct that contains a mapping.
+        // See https://ethereum.stackexchange.com/a/72310
+        MoneyPool storage newMoneyPool = moneyPools[moneyPoolCount];
+        newMoneyPool.owner = owner;
+        newMoneyPool.currentSustainment = 0;
+        newMoneyPool.start = now;
+        newMoneyPool.exists = true;
+        newMoneyPool.previousMoneyPoolId = 0;
+
+        latestMoneyPoolIds[owner] = moneyPoolCount;
+
+        return moneyPoolCount;
+    }
 
     /// @dev Executes the collection of redistributed funds.
     /// @param amount The amount to collect.
@@ -473,7 +444,10 @@ contract FountainV1 {
     /// @dev The sustainability of a MoneyPool cannot be updated if there have been sustainments made to it.
     /// @param owner The address who owns the MoneyPool to look for.
     /// @return id The resulting id.
-    function _moneyPoolIdToUpdate(address owner) private returns (uint256 id) {
+    function _moneyPoolIdToConfigure(address owner)
+        private
+        returns (uint256 id)
+    {
         // Check if there is an active moneyPool
         uint256 moneyPoolId = _getActiveMoneyPoolId(owner);
         if (
@@ -485,13 +459,14 @@ contract FountainV1 {
 
         // Cannot update active moneyPool, check if there is a pending moneyPool
         moneyPoolId = _getPendingMoneyPoolId(owner);
-        if (moneyPoolId != 0) {
-            return moneyPoolId;
-        }
+        if (moneyPoolId != 0) return moneyPoolId;
 
         // No pending moneyPool found, clone the latest moneyPool
         moneyPoolId = _getLatestMoneyPoolId(owner);
-        return _createMoneyPoolFromId(moneyPoolId, now);
+
+        if (moneyPoolId != 0) return _createMoneyPoolFromId(moneyPoolId, now);
+
+        return _initMoneyPoolId(owner);
     }
 
     /// @dev Only active MoneyPools can be sustained.
@@ -500,9 +475,7 @@ contract FountainV1 {
     function _moneyPoolIdToSustain(address owner) private returns (uint256 id) {
         // Check if there is an active moneyPool
         uint256 moneyPoolId = _getActiveMoneyPoolId(owner);
-        if (moneyPoolId != 0) {
-            return moneyPoolId;
-        }
+        if (moneyPoolId != 0) return moneyPoolId;
 
         // No active moneyPool found, check if there is a pending moneyPool
         moneyPoolId = _getPendingMoneyPoolId(owner);
@@ -512,6 +485,12 @@ contract FountainV1 {
 
         // No pending moneyPool found, clone the latest moneyPool
         moneyPoolId = _getLatestMoneyPoolId(owner);
+
+        require(
+            moneyPoolId > 0,
+            "Fountain::moneyPoolIdToSustain: MoneyPool not found"
+        );
+
         MoneyPool storage latestMoneyPool = moneyPools[moneyPoolId];
         // Use a start date that's a multiple of the duration.
         // This creates the effect that there have been scheduled MoneyPools ever since the `latest`, even if `latest` is a long time in the past.
@@ -678,12 +657,7 @@ contract FountainV1 {
         view
         returns (uint256 id)
     {
-        uint256 moneyPoolId = latestMoneyPoolIds[moneyPoolAddress];
-        require(
-            moneyPoolId > 0,
-            "Fountain::getLatestMoneyPoolId: MoneyPool not found"
-        );
-        return moneyPoolId;
+        return latestMoneyPoolIds[moneyPoolAddress];
     }
 
     function _getPendingMoneyPoolId(address moneyPoolAddress)
@@ -692,14 +666,10 @@ contract FountainV1 {
         returns (uint256 id)
     {
         uint256 moneyPoolId = latestMoneyPoolIds[moneyPoolAddress];
-        require(
-            moneyPoolId > 0,
-            "Fountain::getPendingMoneyPoolId: MoneyPool not found"
-        );
-        if (_state(moneyPoolId) != MoneyPoolState.Pending) {
+        if (moneyPoolId == 0) return 0;
+        if (_state(moneyPoolId) != MoneyPoolState.Pending)
             // There is no pending moneyPool if the latest MoneyPool is not pending
             return 0;
-        }
         return moneyPoolId;
     }
 
@@ -709,15 +679,12 @@ contract FountainV1 {
         returns (uint256 id)
     {
         uint256 moneyPoolId = latestMoneyPoolIds[moneyPoolAddress];
-        require(
-            moneyPoolId > 0,
-            "Fountain::getActiveMoneyPoolId: MoneyPool not found"
-        );
+        if (moneyPoolId == 0) return 0;
+
         // An Active moneyPool must be either the latest moneyPool or the
         // moneyPool immediately before it.
-        if (_state(moneyPoolId) == MoneyPoolState.Active) {
-            return moneyPoolId;
-        }
+        if (_state(moneyPoolId) == MoneyPoolState.Active) return moneyPoolId;
+
         MoneyPool storage moneyPool = moneyPools[moneyPoolId];
         require(
             moneyPool.exists,
