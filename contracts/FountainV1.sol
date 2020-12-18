@@ -536,7 +536,7 @@ contract FountainV1 {
     /// @dev Check to see if the given MoneyPool has started.
     /// @param mp The MoneyPool to check.
     /// @return isStarted The boolean result.
-    function _isMoneyPoolStarted(MoneyPool storage mp)
+    function _hasMoneyPoolStarted(MoneyPool storage mp)
         private
         view
         returns (bool isStarted)
@@ -547,7 +547,7 @@ contract FountainV1 {
     /// @dev Check to see if the given MoneyPool has expired.
     /// @param mp The MoneyPool to check.
     /// @return isExpired The boolean result.
-    function _isMoneyPoolExpired(MoneyPool storage mp)
+    function _hasMoneyPoolExpired(MoneyPool storage mp)
         private
         view
         returns (bool isExpired)
@@ -639,13 +639,10 @@ contract FountainV1 {
         MoneyPool storage moneyPool = moneyPools[moneyPoolId];
         require(moneyPool.exists, "Fountain::state: Invalid MoneyPool");
 
-        if (_isMoneyPoolExpired(moneyPool)) {
+        if (_hasMoneyPoolExpired(moneyPool))
             return MoneyPoolState.Redistributing;
-        }
 
-        if (_isMoneyPoolStarted(moneyPool) && !_isMoneyPoolExpired(moneyPool)) {
-            return MoneyPoolState.Active;
-        }
+        if (_hasMoneyPoolStarted(moneyPool)) return MoneyPoolState.Active;
 
         return MoneyPoolState.Pending;
     }
