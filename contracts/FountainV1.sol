@@ -94,13 +94,7 @@ contract FountainV1 {
     // The contract currently only supports sustainments in DAI.
     address public DAI;
 
-    event InitializeMoneyPool(
-        uint256 indexed id,
-        address indexed owner,
-        uint256 indexed sustainabilityTarget,
-        uint256 duration,
-        address want
-    );
+    event InitializeMoneyPool(uint256 indexed id, address indexed owner);
 
     // This even should trigger when an MP's state changes to active.
     event ActivateMoneyPool(
@@ -381,13 +375,7 @@ contract FountainV1 {
         moneyPool.duration = duration;
         moneyPool.want = want;
         if (moneyPool.previousMoneyPoolId == 0)
-            emit InitializeMoneyPool(
-                moneyPoolCount,
-                msg.sender,
-                target,
-                duration,
-                want
-            );
+            emit InitializeMoneyPool(moneyPoolCount, msg.sender);
 
         emit ConfigureMoneyPool(
             moneyPoolCount,
