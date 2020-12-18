@@ -87,6 +87,15 @@ contract("Fountain", ([owner, creator, sustainer]) => {
         erc20Mock.address,
         "Invalid InitializeMoneyPool event"
       );
+      await assertConfigureMoneyPoolEvent(
+        result, 
+        fountain, 
+        creator, 
+        target, 
+        duration, 
+        erc20Mock.address,
+        "Invalid ConfigureMoneyPool event"
+      );
     });
   });
 
