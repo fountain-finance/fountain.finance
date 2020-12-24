@@ -1,13 +1,14 @@
-// const ConvertLib = artifacts.require("ConvertLib");
-// const MetaCoin = artifacts.require("MetaCoin");
 const Fountain = artifacts.require("FountainV1");
 const Water = artifacts.require("Water");
 
-module.exports = function (deployer, network, accounts) {
-  const erc20Address = accounts[3];
-  // deployer.deploy(ConvertLib);
-  deployer.deploy(Fountain, erc20Address);
-  // deployer.link(ConvertLib, MetaCoin);
-  // deployer.deploy(MetaCoin);
-  deployer.deploy(Water);
+// Dynamically obtain DAI contract address based on deployment network (mainnet address is different than ropsten)
+const DAI = {
+  live: "0x6b175474e89094c44da98b954eedeac495271d0f",
+  ropsten: "0xad6d458402f60fd3bd25163575031acdce07538d",
 };
+
+module.exports = function (deployer, network, accounts) {
+  deployer.deploy(Fountain, DAI[network] || accounts[3]);
+  deployer.deploy(Water);  
+};
+
