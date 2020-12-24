@@ -4,23 +4,29 @@
   "scripts": {
     "compile": "truffle compile",
     "test": "truffle test",
-    "remix": "remixd -s . --remix-ide https://remix.ethereum.org"
+    "remix": "remixd -s . --remix-ide https://remix.ethereum.org",
+    "deploy-ropsten": "truffle deploy --network ropsten",
+    "migrate": "truffle migrate -network development",
+    "ganache": "ganache-cli -p 8545"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/tauren/fountain.finance.git"
+    "url": "git+https://github.com/fountain-finance/fountain.finance.git"
   },
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/tauren/fountain.finance/issues"
+    "url": "https://github.com/fountain-finance/fountain.finance/issues"
   },
-  "homepage": "https://github.com/tauren/fountain.finance#readme",
+  "homepage": "https://fountain.finance",
   "dependencies": {
     "@openzeppelin/contracts": "^3.2.0"
   },
   "devDependencies": {
+    "ganache-cli": "^6.12.1",
+    "live-server": "^1.2.1",
     "@gnosis.pm/mock-contract": "^4.0.0",
+    "@truffle/hdwallet-provider": "^1.2.0",
     "remixd": "^0.2.4-alpha.0",
     "truffle": "^5.1.53",
     "truffle-assertions": "^0.9.2"
