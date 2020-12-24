@@ -1,4 +1,5 @@
 const Fountain = artifacts.require("FountainV1");
+const Water = artifacts.require("Water");
 
 // Dynamically obtain DAI contract address based on deployment network (mainnet address is different than ropsten)
 const DAI = {
@@ -8,5 +9,6 @@ const DAI = {
 
 module.exports = function (deployer, network, accounts) {
   deployer.deploy(Fountain, DAI[network] || accounts[3]);
+  deployer.deploy(Water);  
 };
 
