@@ -10,8 +10,8 @@ const {
   assertActivateMoneyPoolEvent,
   assertConfigureMoneyPoolEvent,
   assertSustainMoneyPoolEvent,
-  assertCurrentSustainment,
-  assertSustainmentTrackerAmount,
+  assertBalance,
+  assertSustainmentAmount,
   assertRedistributionTrackerAmount,
   assertSustainabilityPoolAmount,
   assertRedistributionPoolAmount,
@@ -38,7 +38,7 @@ contract("Fountain", ([owner, creator, sustainer]) => {
     });
 
     it("initially has no MoneyPools", async () => {
-      assert.equal(await fountain.moneyPoolCount(), 0);
+      assert.equal(await fountain.mpCount(), 0);
     });
 
     it("stores expected address for DAI", async () => {
@@ -46,7 +46,7 @@ contract("Fountain", ([owner, creator, sustainer]) => {
     });
   });
 
-  describe("initializeMoneyPool", async () => {
+  describe("initialize Money pool", async () => {
     beforeEach(async () => {
       // Instantiate mock and make it return true for any invocation
       erc20Mock = await MockContract.new();
@@ -55,10 +55,10 @@ contract("Fountain", ([owner, creator, sustainer]) => {
       fountain = await Fountain.new(erc20Mock.address); // create new instance each test
     });
 
-    it("initializes MoneyPool for an uninitialized address", async () => {
+    it("initializes Money pool for an uninitialized address", async () => {
       const target = 100;
       const duration = 30;
-      const result = await fountain.configureMoneyPool(
+      const result = await fountain.configureMp(
         target,
         duration,
         erc20Mock.address,
@@ -76,16 +76,13 @@ contract("Fountain", ([owner, creator, sustainer]) => {
       await assertMoneyPoolCount(
         fountain,
         1,
-        "Only one moneyPool should exist"
+        "Only one Money pool should exist"
       );
       await assertInitializeMoneyPoolEvent(
         result, 
         fountain, 
         creator, 
-        target, 
-        duration, 
-        erc20Mock.address,
-        "Invalid InitializeMoneyPool event"
+        "Invalid InitializeMp event"
       );
       await assertConfigureMoneyPoolEvent(
         result, 
@@ -94,12 +91,12 @@ contract("Fountain", ([owner, creator, sustainer]) => {
         target, 
         duration, 
         erc20Mock.address,
-        "Invalid ConfigureMoneyPool event"
+        "Invalid ConfigureMp event"
       );
     });
   });
 
-  describe("updates MoneyPool when MoneyPool has not been sustained", async () => {
+  describe("updates Money pool when it has not been sustained", async () => {
     const initialTarget = 100;
     const initialDuration = 30;
 
@@ -109,7 +106,7 @@ contract("Fountain", ([owner, creator, sustainer]) => {
       await erc20Mock.givenAnyReturnBool(true);
       // instantiate Fountain with mocked contract
       fountain = await Fountain.new(erc20Mock.address); // create new instance each test
-      await fountain.configureMoneyPool(
+      await fountain.configureMp(
         initialTarget,
         initialDuration,
         erc20Mock.address,
@@ -122,7 +119,7 @@ contract("Fountain", ([owner, creator, sustainer]) => {
     it("configures existing MoneyPool", async () => {
       const target = 200;
       const duration = 50;
-      const result = await fountain.configureMoneyPool(
+      const result = await fountain.configureMp(
         target,
         duration,
         erc20Mock.address,
@@ -138,7 +135,7 @@ contract("Fountain", ([owner, creator, sustainer]) => {
         target, 
         duration, 
         erc20Mock.address,
-        "Invalid ConfigureMoneyPool event"
+        "Invalid ConfigureMp event"
       );
       await assertSustainabilityTarget(
         fountain,
@@ -150,7 +147,7 @@ contract("Fountain", ([owner, creator, sustainer]) => {
       await assertMoneyPoolCount(
         fountain,
         1,
-        "Only one MoneyPool should exist"
+        "Only one Money pool should exist"
       );
     });
   });
@@ -165,7 +162,7 @@ contract("Fountain", ([owner, creator, sustainer]) => {
       await erc20Mock.givenAnyReturnBool(true);
       // instantiate Fountain with mocked contract
       fountain = await Fountain.new(erc20Mock.address); // create new instance each test
-      await fountain.configureMoneyPool(
+      await fountain.configureMp(
         initialTarget,
         initialDuration,
         erc20Mock.address,
@@ -176,15 +173,15 @@ contract("Fountain", ([owner, creator, sustainer]) => {
     });
 
     // when there is an active money pool (tests getActiveMoneyPoolId)
-    // when there is no active money pool but there is a pending money pool (tests getPendingMoneyPoolId)
-    // when there is no pending money pool and the latest pool is cloned (tests createMoneyPoolFromId)
+    // when there is no active money pool but there is a upcoming money pool (tests getUpcomingMoneyPoolId)
+    // when there is no upcoming money pool and the latest pool is cloned (tests createMoneyPoolFromId)
 
     const scenarios = [
       {
         description: "sustainment less than target",
         amount: 10,
         expectedCurrentSustainment: 10,
-        expectedSustainmentTrackerAmount: 10,
+        expectedSustainmentAmount: 10,
         expectedRedistributionTrackerAmount: 0,
         expectedSustainabilityPoolAmount: 10,
         expectedRedistributionPoolAmount: 0,
@@ -195,7 +192,7 @@ contract("Fountain", ([owner, creator, sustainer]) => {
         description: "sustainment equal to target",
         amount: 100,
         expectedCurrentSustainment: 100,
-        expectedSustainmentTrackerAmount: 100,
+        expectedSustainmentAmount: 100,
         expectedRedistributionTrackerAmount: 0,
         expectedSustainabilityPoolAmount: 100,
         expectedRedistributionPoolAmount: 0,
@@ -206,7 +203,7 @@ contract("Fountain", ([owner, creator, sustainer]) => {
         description: "sustainment greater than target",
         amount: 150,
         expectedCurrentSustainment: 150,
-        expectedSustainmentTrackerAmount: 150,
+        expectedSustainmentAmount: 150,
         expectedRedistributionTrackerAmount: 50,
         expectedSustainabilityPoolAmount: 100,
         expectedRedistributionPoolAmount: 0, // Redistribution hasn't triggered yet
@@ -216,7 +213,7 @@ contract("Fountain", ([owner, creator, sustainer]) => {
     ];
 
     scenarios.forEach((scenario) => {
-      it(`sustains existing moneyPool when ${scenario.description}`, async () => {
+      it(`sustains existing money pool when ${scenario.description}`, async () => {
         const result = await fountain.sustain(creator, scenario.amount, {
           // Using address that did not create the MoneyPool
           from: sustainer,
@@ -226,8 +223,7 @@ contract("Fountain", ([owner, creator, sustainer]) => {
           fountain, 
           creator,
           sustainer, 
-          scenario.amount,
-          "Invalid SustainMoneyPool event"
+          "Invalid SustainMp event"
         );
         await assertActivateMoneyPoolEvent(
           result, 
@@ -236,9 +232,9 @@ contract("Fountain", ([owner, creator, sustainer]) => {
           initialTarget, 
           initialDuration, 
           erc20Mock.address,
-          "Invalid ActivateMoneyPool event"
+          "Invalid ActivateMp event"
         );
-        await assertCurrentSustainment(
+        await assertBalance(
           fountain,
           creator,
           scenario.expectedCurrentSustainment,
@@ -250,12 +246,12 @@ contract("Fountain", ([owner, creator, sustainer]) => {
           scenario.expectedSustainerCount,
           "Invalid sustainerCount"
         );
-        await assertSustainmentTrackerAmount(
+        await assertSustainmentAmount(
           fountain,
           creator,
           sustainer,
-          scenario.expectedSustainmentTrackerAmount,
-          "Invalid sustainmentTracker amount"
+          scenario.expectedSustainmentAmount,
+          "Invalid sustainment amount"
         );
         await assertRedistributionTrackerAmount(
           fountain,
@@ -324,7 +320,7 @@ contract("Fountain", ([owner, creator, sustainer]) => {
       await erc20Mock.givenAnyReturnBool(false);
       // instantiate Fountain with mocked contract
       fountain = await Fountain.new(erc20Mock.address); // create new instance each test
-      await fountain.configureMoneyPool(
+      await fountain.configureMp(
         initialTarget,
         initialDuration,
         erc20Mock.address,
@@ -347,43 +343,85 @@ contract("Fountain", ([owner, creator, sustainer]) => {
     });
   });
 
-  // it("should contribute correctly", async () => {
-  //   const instance = await Fountain.deployed();
-  //   await instance.contribute(accounts[0], 10, { from: accounts[1] });
-  //   const contribution = (
-  //     await instance.getContribution.call(accounts[0], accounts[1])
-  //   ).toNumber();
-  //   // const accountOne = (await metaCoinInstance.getBalance.call(accountOne)).toNumber();
+  describe("Permissions failure conditions", async () => {
+    const initialTarget = 100;
+    const initialDuration = 30;
 
-  //   assert.equal(contribution, 10, "hmm");
-  // });
-  // it('should call a function that depends on a linked library', async () => {
-  //   const metaCoinInstance = await MetaCoin.deployed();
-  //   const metaCoinBalance = (await metaCoinInstance.getBalance.call(accounts[0])).toNumber();
-  //   const metaCoinEthBalance = (await metaCoinInstance.getBalanceInEth.call(accounts[0])).toNumber();
+    beforeEach(async () => {
+      // Instantiate mock and make it return false for any invocation
+      erc20Mock = await MockContract.new();
+      await erc20Mock.givenAnyReturnBool(true);
+      // instantiate Fountain with mocked contract
+      fountain = await Fountain.new(erc20Mock.address); // create new instance each test
+      await fountain.configureMp(
+        initialTarget,
+        initialDuration,
+        erc20Mock.address,
+        {
+          from: creator,
+        }
+      );
+    });
 
-  //   assert.equal(metaCoinEthBalance, 2 * metaCoinBalance, 'Library function returned unexpected function, linkage may be broken');
-  // });
-  // it('should send coin correctly', async () => {
-  //   const metaCoinInstance = await MetaCoin.deployed();
+    it("Balance not available to address other than owner", async () => {
+      const amount = 123;
+      fountain.sustain(creator, amount, {
+        // Using address that did not create the MoneyPool
+        from: sustainer,
+      }),
+      await assertBalance(
+        fountain,
+        creator,
+        amount,
+        "Invalid access to Money pool balance"
+      );
+      await assertBalance(
+        fountain,
+        creator,
+        0,
+        "Invalid access to Money pool balance",
+        sustainer
+      );
+    });
+  });
 
-  //   // Setup 2 accounts.
-  //   const accountOne = accounts[0];
-  //   const accountTwo = accounts[1];
+  // // it("should contribute correctly", async () => {
+  // //   const instance = await Fountain.deployed();
+  // //   await instance.contribute(accounts[0], 10, { from: accounts[1] });
+  // //   const contribution = (
+  // //     await instance.getContribution.call(accounts[0], accounts[1])
+  // //   ).toNumber();
+  // //   // const accountOne = (await metaCoinInstance.getBalance.call(accountOne)).toNumber();
 
-  //   // Get initial balances of first and second account.
-  //   const accountOneStartingBalance = (await metaCoinInstance.getBalance.call(accountOne)).toNumber();
-  //   const accountTwoStartingBalance = (await metaCoinInstance.getBalance.call(accountTwo)).toNumber();
+  // //   assert.equal(contribution, 10, "hmm");
+  // // });
+  // // it('should call a function that depends on a linked library', async () => {
+  // //   const metaCoinInstance = await MetaCoin.deployed();
+  // //   const metaCoinBalance = (await metaCoinInstance.getBalance.call(accounts[0])).toNumber();
+  // //   const metaCoinEthBalance = (await metaCoinInstance.getBalanceInEth.call(accounts[0])).toNumber();
 
-  //   // Make transaction from first account to second.
-  //   const amount = 10;
-  //   await metaCoinInstance.sendCoin(accountTwo, amount, { from: accountOne });
+  // //   assert.equal(metaCoinEthBalance, 2 * metaCoinBalance, 'Library function returned unexpected function, linkage may be broken');
+  // // });
+  // // it('should send coin correctly', async () => {
+  // //   const metaCoinInstance = await MetaCoin.deployed();
 
-  //   // Get balances of first and second account after the transactions.
-  //   const accountOneEndingBalance = (await metaCoinInstance.getBalance.call(accountOne)).toNumber();
-  //   const accountTwoEndingBalance = (await metaCoinInstance.getBalance.call(accountTwo)).toNumber();
+  // //   // Setup 2 accounts.
+  // //   const accountOne = accounts[0];
+  // //   const accountTwo = accounts[1];
 
-  //   assert.equal(accountOneEndingBalance, accountOneStartingBalance - amount, "Amount wasn't correctly taken from the sender");
-  //   assert.equal(accountTwoEndingBalance, accountTwoStartingBalance + amount, "Amount wasn't correctly sent to the receiver");
-  // });
+  // //   // Get initial balances of first and second account.
+  // //   const accountOneStartingBalance = (await metaCoinInstance.getBalance.call(accountOne)).toNumber();
+  // //   const accountTwoStartingBalance = (await metaCoinInstance.getBalance.call(accountTwo)).toNumber();
+
+  // //   // Make transaction from first account to second.
+  // //   const amount = 10;
+  // //   await metaCoinInstance.sendCoin(accountTwo, amount, { from: accountOne });
+
+  // //   // Get balances of first and second account after the transactions.
+  // //   const accountOneEndingBalance = (await metaCoinInstance.getBalance.call(accountOne)).toNumber();
+  // //   const accountTwoEndingBalance = (await metaCoinInstance.getBalance.call(accountTwo)).toNumber();
+
+  // //   assert.equal(accountOneEndingBalance, accountOneStartingBalance - amount, "Amount wasn't correctly taken from the sender");
+  // //   assert.equal(accountTwoEndingBalance, accountTwoStartingBalance + amount, "Amount wasn't correctly sent to the receiver");
+  // // });
 });
