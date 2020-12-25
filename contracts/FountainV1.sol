@@ -399,7 +399,7 @@ contract FountainV1 is IFountainV1 {
                 address(this),
                 amount
             ),
-            "ERC20 transfer failed"
+            "Fountain::sustain: ERC20 transfer failed"
         );
 
         // Increment the funds that can be collected from sustainability.
