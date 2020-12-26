@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.6.0 <0.8.0;
 
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
 interface IFountainV1 {
-    function previousMpIds(uint256 mpId) external view returns (uint256);
+    function previousMpIds(uint256 _mpId) external view returns (uint256);
 
-    function latestMpIds(address owner) external view returns (uint256);
+    function latestMpIds(address _owner) external view returns (uint256);
 
-    function redistributionPool(address sustainer)
+    function redistributionPool(address _sustainer)
         external
         view
         returns (uint256 amount);
@@ -19,14 +21,14 @@ interface IFountainV1 {
         address indexed owner,
         uint256 indexed target,
         uint256 duration,
-        address want
+        IERC20 want
     );
     event ConfigureMp(
         uint256 indexed id,
         address indexed owner,
         uint256 indexed target,
         uint256 duration,
-        address want
+        IERC20 want
     );
     event SustainMp(
         uint256 indexed id,
@@ -36,11 +38,11 @@ interface IFountainV1 {
     event CollectRedistributions(address indexed sustainer, uint256 amount);
     event CollectSustainements(address indexed owner, uint256 amount);
 
-    function getMp(uint256 mpId)
+    function getMp(uint256 _mpId)
         external
         view
         returns (
-            address want,
+            IERC20 want,
             uint256 target,
             uint256 start,
             uint256 duration,
@@ -48,11 +50,11 @@ interface IFountainV1 {
             uint256 balance
         );
 
-    function getUpcomingMp(address owner)
+    function getUpcomingMp(address _owner)
         external
         view
         returns (
-            address want,
+            IERC20 want,
             uint256 target,
             uint256 start,
             uint256 duration,
@@ -60,11 +62,11 @@ interface IFountainV1 {
             uint256 balance
         );
 
-    function getActiveMp(address owner)
+    function getActiveMp(address _owner)
         external
         view
         returns (
-            address want,
+            IERC20 want,
             uint256 target,
             uint256 start,
             uint256 duration,
@@ -72,18 +74,18 @@ interface IFountainV1 {
             uint256 balance
         );
 
-    function getUpcomingMpId(address owner) external view returns (uint256 id);
+    function getUpcomingMpId(address _owner) external view returns (uint256 id);
 
-    function getActiveMpId(address owner) external view returns (uint256 id);
+    function getActiveMpId(address _owner) external view returns (uint256 id);
 
     function getSustainmentBalance() external view returns (uint256 amount);
 
-    function getSustainment(uint256 mpId, address sustainer)
+    function getSustainment(uint256 _mpId, address _sustainer)
         external
         view
         returns (uint256 amount);
 
-    function getTrackedRedistribution(uint256 mpId, address sustainer)
+    function getTrackedRedistribution(uint256 _mpId, address _sustainer)
         external
         view
         returns (uint256 amount);
@@ -91,29 +93,35 @@ interface IFountainV1 {
     function getRedistributionBalance() external view returns (uint256 amount);
 
     function configureMp(
-        uint256 target,
-        uint256 duration,
-        address want
+        uint256 _target,
+        uint256 _duration,
+        IERC20 _want
     ) external returns (uint256 mpId);
 
-    function sustain(address owner, uint256 amount)
+    function sustain(address _owner, uint256 _amount)
         external
         returns (uint256 mpId);
 
-    function collectRedistributions(uint256 amount)
+    function sustain(
+        address _owner,
+        uint256 _amount,
+        address _beneficiary
+    ) external returns (uint256 mpId);
+
+    function collectRedistributions(uint256 _amount)
         external
         returns (bool success);
 
-    function collectRedistributionsFromAddress(uint256 amount, address from)
+    function collectRedistributionsFromAddress(uint256 _amount, address _from)
         external
         returns (bool success);
 
     function collectRedistributionsFromAddresses(
-        uint256 amount,
-        address[] calldata from
+        uint256 _amount,
+        address[] calldata _from
     ) external returns (bool success);
 
-    function collectSustainments(uint256 amount)
+    function collectSustainments(uint256 _amount)
         external
         returns (bool success);
 }
