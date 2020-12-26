@@ -37,6 +37,7 @@ contract YourProject {
         private
         returns (uint256 mpId)
     {
+        /// The _amount will be pulled from the balance of this contract's address.
         return fountain.sustain(address(this), _amount, _from);
     }
 }
