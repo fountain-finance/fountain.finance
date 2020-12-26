@@ -10,7 +10,7 @@ contract YourProject {
     /// @dev Create your Money pool in your constructor.
     constructor(address _fountain, IERC20 _dai) public {
         fountain = IFountainV1(_fountain);
-        fountain.configureMp(100000, 30, _dai);
+        fountain.configureMp(10000 * (10 ^ 18), 30, _dai);
     }
 
     /// @dev Create a way for your contract to reconfigure your Money pool.
