@@ -33,7 +33,9 @@ interface IFountainV1 {
     event SustainMp(
         uint256 indexed id,
         address indexed owner,
-        address indexed sustainer
+        address indexed beneficiary,
+        address sustainer,
+        uint256 amount
     );
     event CollectRedistributions(address indexed sustainer, uint256 amount);
     event CollectSustainements(address indexed owner, uint256 amount);

@@ -237,7 +237,9 @@ contract("Fountain", ([owner, creator, sustainer, beneficiary]) => {
           result, 
           fountain, 
           creator,
+          scenario.beneficiary,
           sustainer, 
+          scenario.amount,
           "Invalid SustainMp event"
         );
         await assertActivateMoneyPoolEvent(
@@ -375,27 +377,6 @@ contract("Fountain", ([owner, creator, sustainer, beneficiary]) => {
         {
           from: creator,
         }
-      );
-    });
-
-    it("Balance not available to address other than owner", async () => {
-      const amount = 123;
-      fountain.sustain(creator, amount, sustainer, {
-        // Using address that did not create the MoneyPool
-        from: sustainer,
-      }),
-      await assertBalance(
-        fountain,
-        creator,
-        amount,
-        "Invalid access to Money pool balance"
-      );
-      await assertBalance(
-        fountain,
-        creator,
-        0,
-        "Invalid access to Money pool balance",
-        sustainer
       );
     });
   });

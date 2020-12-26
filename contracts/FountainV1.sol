@@ -81,17 +81,13 @@ contract FountainV1 is IFountainV1 {
         unlocked = 1;
     }
 
-    // --- private properties --- //
-
-    // These are kept private so that contracts can't make sustainment decisions based on how much sustainment an Money pool owner has.
+    // --- public properties --- //
 
     // The official record of all Money pools ever created
-    mapping(uint256 => MoneyPool) private mps;
+    mapping(uint256 => MoneyPool) public mps;
 
     // The funds that have accumulated to sustain each address's Money pools.
-    mapping(address => uint256) private sustainabilityPool;
-
-    // --- public properties --- //
+    mapping(address => uint256) public sustainabilityPool;
 
     /// @notice A mapping from Money pool id's the the id of the previous MP for the same owner.
     mapping(uint256 => uint256) public override previousMpIds;
@@ -117,7 +113,7 @@ contract FountainV1 is IFountainV1 {
     /// This event should trigger when a Money pool is first initialized.
     event InitializeMp(uint256 indexed id, address indexed owner);
 
-    // This even should trigger when a Money pool's state changes to active.
+    // This event should trigger when a Money pool's state changes to active.
     event ActivateMp(
         uint256 indexed id,
         address indexed owner,
@@ -140,7 +136,8 @@ contract FountainV1 is IFountainV1 {
         uint256 indexed id,
         address indexed owner,
         address indexed beneficiary,
-        address sustainer
+        address sustainer,
+        uint256 amount
     );
 
     /// This event should trigger when redistributions are collected.
@@ -523,7 +520,13 @@ contract FountainV1 is IFountainV1 {
         _updateTrackedRedistribution(_currentMp);
 
         // Emit events.
-        emit SustainMp(_mpId, _currentMp.owner, _beneficiary, msg.sender);
+        emit SustainMp(
+            _mpId,
+            _currentMp.owner,
+            _beneficiary,
+            msg.sender,
+            _amount
+        );
 
         if (wasInactive)
             // Emit an event since since is the first sustainment being made towards this Money pool.
@@ -546,7 +549,7 @@ contract FountainV1 is IFountainV1 {
     /// @return start The time when this Money pool started.
     /// @return duration The duration of this Money pool.
     /// @return sustainerCount The number of addresses that have sustained this Money pool.
-    /// @return balance The balance of the Money pool. Returns 0 if the Money pool isn't owned by the message sender.
+    /// @return balance The balance of the Money pool.
     function _mpProperties(uint256 _mpId)
         private
         view
@@ -568,10 +571,7 @@ contract FountainV1 is IFountainV1 {
             _mp.start,
             _mp.duration,
             _mp.sustainers.length,
-            // Only the owner can see the current balance if the _mp is active.
-            msg.sender == _mp.owner || _state(_mpId) != MpState.Active
-                ? _mp.balance
-                : 0
+            _mp.balance
         );
     }
 
