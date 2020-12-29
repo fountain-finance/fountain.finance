@@ -165,7 +165,7 @@ exports.assertSustainabilityPoolAmount = async (
   amount,
   message
 ) => {
-  const currentAmount = (await instance.getSustainmentBalance({ from: address })).toNumber();
+  const currentAmount = (await instance.getSustainmentBalance(address, { from: address })).toNumber();
   assert.equal(currentAmount, amount, message);
 };
 
