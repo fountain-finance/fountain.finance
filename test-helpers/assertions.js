@@ -98,7 +98,9 @@ exports.assertSustainMoneyPoolEvent = async (
   tx,
   instance,
   creator,
+  beneficiary,
   sustainer,
+  amount,
   message
 ) => {
   const currentCount = (await instance.mpCount()).toString();
@@ -106,7 +108,9 @@ exports.assertSustainMoneyPoolEvent = async (
     return (
       ev.id.toString() === currentCount &&
       ev.owner === creator &&
-      ev.sustainer === sustainer
+      ev.beneficiary === beneficiary &&
+      ev.sustainer === sustainer &&
+      ev.amount.toString() === amount.toString() 
     )
   }, message);
 };

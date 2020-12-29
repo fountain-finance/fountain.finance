@@ -22,7 +22,7 @@ const {
 // owner: the address that deploys the Fountain contract
 // creator: an address that creates a MoneyPool
 // sustainer: an address that sustains a MoneyPool
-contract("Fountain", ([owner, creator, sustainer]) => {
+contract("Fountain", ([owner, creator, sustainer, beneficiary]) => {
   let fountain;
   // let DAI = "0x6B175474E89094C44Da98b954EedeAC495271d0F";
   let erc20Mock;
@@ -42,7 +42,7 @@ contract("Fountain", ([owner, creator, sustainer]) => {
     });
 
     it("stores expected address for DAI", async () => {
-      assert.equal(await fountain.DAI(), erc20Mock.address);
+      assert.equal(await fountain.dai(), erc20Mock.address);
     });
   });
 
@@ -180,6 +180,7 @@ contract("Fountain", ([owner, creator, sustainer]) => {
       {
         description: "sustainment less than target",
         amount: 10,
+        beneficiary: sustainer,
         expectedCurrentSustainment: 10,
         expectedSustainmentAmount: 10,
         expectedRedistributionTrackerAmount: 0,
@@ -191,6 +192,7 @@ contract("Fountain", ([owner, creator, sustainer]) => {
       {
         description: "sustainment equal to target",
         amount: 100,
+        beneficiary: sustainer,
         expectedCurrentSustainment: 100,
         expectedSustainmentAmount: 100,
         expectedRedistributionTrackerAmount: 0,
@@ -202,6 +204,19 @@ contract("Fountain", ([owner, creator, sustainer]) => {
       {
         description: "sustainment greater than target",
         amount: 150,
+        beneficiary: sustainer,
+        expectedCurrentSustainment: 150,
+        expectedSustainmentAmount: 150,
+        expectedRedistributionTrackerAmount: 50,
+        expectedSustainabilityPoolAmount: 100,
+        expectedRedistributionPoolAmount: 0, // Redistribution hasn't triggered yet
+        expectedSustainerCount: 1,
+        expectedSustainedAddresses: [creator],
+      },
+      {
+        description: "beneficiary different from message sender",
+        amount: 150,
+        beneficiary,
         expectedCurrentSustainment: 150,
         expectedSustainmentAmount: 150,
         expectedRedistributionTrackerAmount: 50,
@@ -214,7 +229,7 @@ contract("Fountain", ([owner, creator, sustainer]) => {
 
     scenarios.forEach((scenario) => {
       it(`sustains existing money pool when ${scenario.description}`, async () => {
-        const result = await fountain.sustain(creator, scenario.amount, {
+        const result = await fountain.sustain(creator, scenario.amount, scenario.beneficiary, {
           // Using address that did not create the MoneyPool
           from: sustainer,
         });
@@ -222,7 +237,9 @@ contract("Fountain", ([owner, creator, sustainer]) => {
           result, 
           fountain, 
           creator,
+          scenario.beneficiary,
           sustainer, 
+          scenario.amount,
           "Invalid SustainMp event"
         );
         await assertActivateMoneyPoolEvent(
@@ -249,14 +266,14 @@ contract("Fountain", ([owner, creator, sustainer]) => {
         await assertSustainmentAmount(
           fountain,
           creator,
-          sustainer,
+          scenario.beneficiary,
           scenario.expectedSustainmentAmount,
           "Invalid sustainment amount"
         );
         await assertRedistributionTrackerAmount(
           fountain,
           creator,
-          sustainer,
+          scenario.beneficiary,
           scenario.expectedRedistributionTrackerAmount,
           "Invalid redistributionTracker amount"
         );
@@ -274,7 +291,7 @@ contract("Fountain", ([owner, creator, sustainer]) => {
         );
         await assertSustainedAddresses(
           fountain,
-          sustainer,
+          scenario.beneficiary,
           scenario.expectedSustainedAddresses,
           "Invalid sustainedAddressCount amount"
         );
@@ -285,7 +302,7 @@ contract("Fountain", ([owner, creator, sustainer]) => {
       const amount = 0;
       await truffleAssert.fails(
         // Using "creator" address which has a moneyPool
-        fountain.sustain(creator, amount, {
+        fountain.sustain(creator, amount, sustainer, {
           // Using address that did not create the MoneyPool
           from: sustainer,
         }),
@@ -297,7 +314,7 @@ contract("Fountain", ([owner, creator, sustainer]) => {
       const amount = 10;
       await truffleAssert.fails(
         // Using "owner" address which does not have a moneyPool
-        fountain.sustain(owner, amount, {
+        fountain.sustain(owner, amount, sustainer, {
           // Using address that did not create the MoneyPool
           from: sustainer,
         }),
@@ -334,7 +351,7 @@ contract("Fountain", ([owner, creator, sustainer]) => {
       const amount = 10;
       await truffleAssert.fails(
         // Using "creator" address which has a moneyPool
-        fountain.sustain(creator, amount, {
+        fountain.sustain(creator, amount, sustainer, {
           // Using address that did not create the MoneyPool
           from: sustainer,
         }),
@@ -360,27 +377,6 @@ contract("Fountain", ([owner, creator, sustainer]) => {
         {
           from: creator,
         }
-      );
-    });
-
-    it("Balance not available to address other than owner", async () => {
-      const amount = 123;
-      fountain.sustain(creator, amount, {
-        // Using address that did not create the MoneyPool
-        from: sustainer,
-      }),
-      await assertBalance(
-        fountain,
-        creator,
-        amount,
-        "Invalid access to Money pool balance"
-      );
-      await assertBalance(
-        fountain,
-        creator,
-        0,
-        "Invalid access to Money pool balance",
-        sustainer
       );
     });
   });
