@@ -161,12 +161,12 @@ contract FountainV1 is IFountainV1 {
         view
         override
         returns (
-            IERC20,
-            uint256,
-            uint256,
-            uint256,
-            uint256,
-            uint256
+            IERC20 want,
+            uint256 target,
+            uint256 start,
+            uint256 duration,
+            uint256 sustainerCount,
+            uint256 balance
         )
     {
         return _mpProperties(_mpId);
@@ -185,12 +185,12 @@ contract FountainV1 is IFountainV1 {
         view
         override
         returns (
-            IERC20,
-            uint256,
-            uint256,
-            uint256,
-            uint256,
-            uint256
+            IERC20 want,
+            uint256 target,
+            uint256 start,
+            uint256 duration,
+            uint256 sustainerCount,
+            uint256 balance
         )
     {
         return _mpProperties(_upcomingMpId(_owner));
@@ -209,12 +209,12 @@ contract FountainV1 is IFountainV1 {
         view
         override
         returns (
-            IERC20,
-            uint256,
-            uint256,
-            uint256,
-            uint256,
-            uint256
+            IERC20 want,
+            uint256 target,
+            uint256 start,
+            uint256 duration,
+            uint256 sustainerCount,
+            uint256 balance
         )
     {
         return _mpProperties(_activeMpId(_owner));
@@ -285,11 +285,7 @@ contract FountainV1 is IFountainV1 {
         override
         returns (uint256)
     {
-        require(
-            mps[_mpId].exists,
-            "Fountain::getTrackedRedistribution: Money pool not found"
-        );
-        return mps[_mpId].redistributionTracker[_sustainer];
+        return _trackedRedistribution(_mpId, _sustainer);
     }
 
     /// @dev The amount of redistribution accessible.
@@ -385,9 +381,10 @@ contract FountainV1 is IFountainV1 {
         // redistribution has completed for all redistributable Money pools
         address[] memory _sustainedAddresses =
             sustainedAddressesBySustainer[msg.sender];
-        for (uint256 i = 0; i < _sustainedAddresses.length; i++) {
+
+        for (uint256 i = 0; i < _sustainedAddresses.length; i++)
             _redistributeMp(_sustainedAddresses[i]);
-        }
+
         _performCollectRedistributions(_amount);
         return true;
     }
@@ -518,9 +515,6 @@ contract FountainV1 is IFountainV1 {
         // Add this address to the sustainer's list of sustained addresses
         sustainedAddressesBySustainer[_beneficiary].push(_owner);
 
-        // Redistribution amounts may have changed for the current Money pool.
-        _updateTrackedRedistribution(_currentMp);
-
         // Emit events.
         emit SustainMp(
             _mpId,
@@ -565,7 +559,7 @@ contract FountainV1 is IFountainV1 {
         )
     {
         MoneyPool memory _mp = mps[_mpId];
-        require(_mp.exists, "Fountain::getMp: Money pool not found");
+        require(_mp.exists, "Fountain::_mpProperties: Money pool not found");
 
         return (
             _mp.want,
@@ -575,36 +569,6 @@ contract FountainV1 is IFountainV1 {
             _mp.sustainers.length,
             _mp.balance
         );
-    }
-
-    /// @dev The Money pool that's next up for an owner.
-    /// @param _owner The owner of the money pool being looked for.
-    /// @return id The ID of the upcoming Money pool.
-    function _upcomingMpId(address _owner) private view returns (uint256) {
-        uint256 _mpId = latestMpIds[_owner];
-        if (_mpId == 0) return 0;
-        // There is no upcoming moneyPool if the latest Money pool is not upcoming
-        if (_state(_mpId) != MpState.Upcoming) return 0;
-        return _mpId;
-    }
-
-    /// @dev The currently active Money pool for an owner.
-    /// @param _owner The owner of the money pool being looked for.
-    /// @return id The active Money pool's ID.
-    function _activeMpId(address _owner) private view returns (uint256) {
-        uint256 _mpId = latestMpIds[_owner];
-        if (_mpId == 0) return 0;
-
-        // An Active moneyPool must be either the latest moneyPool or the
-        // moneyPool immediately before it.
-        if (_state(_mpId) == MpState.Active) return _mpId;
-
-        _mpId = previousMpIds[_mpId];
-        if (_mpId > 0 && _state(_mpId) == MpState.Active) {
-            return _mpId;
-        }
-
-        return 0;
     }
 
     /// @dev Executes the collection of redistributed funds.
@@ -637,7 +601,7 @@ contract FountainV1 is IFountainV1 {
         if (_mpId != 0) return _mpId;
 
         // No upcoming moneyPool found, clone the latest moneyPool
-        _mpId = _getLatestMpId(_owner);
+        _mpId = latestMpIds[_owner];
 
         if (_mpId != 0) return _createMpFromId(_mpId, now);
 
@@ -656,12 +620,12 @@ contract FountainV1 is IFountainV1 {
         uint256 _mpId = _activeMpId(_owner);
         if (_mpId != 0) return _mpId;
 
-        // No active moneyPool found, check if there is a upcoming moneyPool
+        // No active moneyPool found, check if there is an upcoming moneyPool
         _mpId = _upcomingMpId(_owner);
         if (_mpId != 0) return _mpId;
 
         // No upcoming moneyPool found, clone the latest moneyPool
-        _mpId = _getLatestMpId(_owner);
+        _mpId = latestMpIds[_owner];
 
         require(_mpId > 0, "Fountain::mpIdToSustain: Money pool not found");
 
@@ -680,26 +644,17 @@ contract FountainV1 is IFountainV1 {
     /// @dev Proportionally allocate the specified amount to the contributors of the specified Money pool,
     /// @dev meaning each sustainer will receive a portion of the specified amount equivalent to the portion of the total
     /// @dev amount contributed to the sustainment of the Money pool that they are responsible for.
-    /// @param _mp The Money pool to update.
-    function _updateTrackedRedistribution(MoneyPool storage _mp) private {
-        // Return if there's no surplus.
-        if (_mp.target >= _mp.balance) return;
+    /// @param _mpId The ID of the Money pool to update.
+    function _updateTrackedRedistribution(uint256 _mpId, address _sustainer)
+        private
+    {
+        MoneyPool storage _mp = mps[_mpId];
 
-        uint256 surplus = _mp.balance.sub(_mp.target);
-
-        // For each sustainer, calculate their share of the sustainment and
-        // allocate a proportional share of the surplus, overwriting any previous value.
-        for (uint256 i = 0; i < _mp.sustainers.length; i++) {
-            address _sustainer = _mp.sustainers[i];
-
-            uint256 _balanceProportion =
-                _mp.sustainments[_sustainer].div(_mp.balance);
-
-            uint256 _sustainerSurplusShare = surplus.mul(_balanceProportion);
-
-            //Store the updated redistribution in the Money pool.
-            _mp.redistributionTracker[_sustainer] = _sustainerSurplusShare;
-        }
+        //Store the updated redistribution in the Money pool.
+        _mp.redistributionTracker[_sustainer] = _trackedRedistribution(
+            _mpId,
+            _sustainer
+        );
     }
 
     /// @dev Take any tracked redistribution in the given moneyPool and
@@ -722,6 +677,7 @@ contract FountainV1 is IFountainV1 {
         address sustainer = msg.sender;
         while (_mpId > 0 && !_mp.hasRedistributed[sustainer]) {
             if (_state(_mpId) == MpState.Redistributing) {
+                _updateTrackedRedistribution(_mpId, sustainer);
                 redistributionPool[sustainer] = redistributionPool[sustainer]
                     .add(_mp.redistributionTracker[sustainer]);
                 _mp.hasRedistributed[sustainer] = true;
@@ -799,11 +755,56 @@ contract FountainV1 is IFountainV1 {
         return mpCount;
     }
 
-    /// @dev The Money pool that is the latest configured Money pool for the owner.
+    /// @dev The amount of redistribution in a Money pool that can be claimed by the given address.
+    /// @param _mpId The ID of the Money pool to get a redistribution amount for.
+    /// @param _sustainer The address of the sustainer to get an amount for.
+    /// @return amount The amount.
+    function _trackedRedistribution(uint256 _mpId, address _sustainer)
+        private
+        view
+        returns (uint256)
+    {
+        MoneyPool storage _mp = mps[_mpId];
+
+        // Return 0 if there's no surplus.
+        if (!_mp.exists || _mp.target >= _mp.balance) return 0;
+
+        uint256 surplus = _mp.balance.sub(_mp.target);
+
+        // Calculate their share of the sustainment for the the given sustainer.
+        // allocate a proportional share of the surplus, overwriting any previous value.
+        uint256 _balanceProportion =
+            _mp.sustainments[_sustainer].div(_mp.balance);
+
+        return surplus.mul(_balanceProportion);
+    }
+
+    /// @dev The currently active Money pool for an owner.
     /// @param _owner The owner of the money pool being looked for.
-    /// @return id The latest Money pool's ID.
-    function _getLatestMpId(address _owner) private view returns (uint256) {
-        return latestMpIds[_owner];
+    /// @return id The active Money pool's ID.
+    function _activeMpId(address _owner) private view returns (uint256) {
+        uint256 _mpId = latestMpIds[_owner];
+        if (_mpId == 0) return 0;
+
+        // An Active moneyPool must be either the latest moneyPool or the
+        // moneyPool immediately before it.
+        if (_state(_mpId) == MpState.Active) return _mpId;
+
+        _mpId = previousMpIds[_mpId];
+        if (_mpId > 0 && _state(_mpId) == MpState.Active) return _mpId;
+
+        return 0;
+    }
+
+    /// @dev The Money pool that's next up for an owner.
+    /// @param _owner The owner of the money pool being looked for.
+    /// @return id The ID of the upcoming Money pool.
+    function _upcomingMpId(address _owner) private view returns (uint256) {
+        uint256 _mpId = latestMpIds[_owner];
+        if (_mpId == 0) return 0;
+        // There is no upcoming Money pool if the latest Money pool is not upcoming
+        if (_state(_mpId) != MpState.Upcoming) return 0;
+        return _mpId;
     }
 
     /// @dev Check to see if the given Money pool has started.
