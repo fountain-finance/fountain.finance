@@ -161,12 +161,12 @@ contract FountainV1 is IFountainV1 {
         view
         override
         returns (
-            IERC20 want,
-            uint256 target,
-            uint256 start,
-            uint256 duration,
-            uint256 sustainerCount,
-            uint256 balance
+            IERC20,
+            uint256,
+            uint256,
+            uint256,
+            uint256,
+            uint256
         )
     {
         return _mpProperties(_mpId);
@@ -185,12 +185,12 @@ contract FountainV1 is IFountainV1 {
         view
         override
         returns (
-            IERC20 want,
-            uint256 target,
-            uint256 start,
-            uint256 duration,
-            uint256 sustainerCount,
-            uint256 balance
+            IERC20,
+            uint256,
+            uint256,
+            uint256,
+            uint256,
+            uint256
         )
     {
         return _mpProperties(_upcomingMpId(_owner));
@@ -209,12 +209,12 @@ contract FountainV1 is IFountainV1 {
         view
         override
         returns (
-            IERC20 want,
-            uint256 target,
-            uint256 start,
-            uint256 duration,
-            uint256 sustainerCount,
-            uint256 balance
+            IERC20,
+            uint256,
+            uint256,
+            uint256,
+            uint256,
+            uint256
         )
     {
         return _mpProperties(_activeMpId(_owner));
@@ -227,7 +227,7 @@ contract FountainV1 is IFountainV1 {
         external
         view
         override
-        returns (uint256 id)
+        returns (uint256)
     {
         return _upcomingMpId(_owner);
     }
@@ -239,7 +239,7 @@ contract FountainV1 is IFountainV1 {
         external
         view
         override
-        returns (uint256 id)
+        returns (uint256)
     {
         return _activeMpId(_owner);
     }
@@ -251,7 +251,7 @@ contract FountainV1 is IFountainV1 {
         external
         view
         override
-        returns (uint256 amount)
+        returns (uint256)
     {
         return sustainabilityPool[owner];
     }
@@ -264,7 +264,7 @@ contract FountainV1 is IFountainV1 {
         external
         view
         override
-        returns (uint256 amount)
+        returns (uint256)
     {
         MoneyPool memory _mp = mps[_mpId];
         require(_mp.exists, "Fountain::getSustainment: Money pool not found");
@@ -283,7 +283,7 @@ contract FountainV1 is IFountainV1 {
         external
         view
         override
-        returns (uint256 amount)
+        returns (uint256)
     {
         require(
             mps[_mpId].exists,
@@ -299,7 +299,7 @@ contract FountainV1 is IFountainV1 {
         external
         view
         override
-        returns (uint256 amount)
+        returns (uint256)
     {
         return redistributionPool[sustainer];
     }
@@ -321,7 +321,7 @@ contract FountainV1 is IFountainV1 {
         uint256 _target,
         uint256 _duration,
         IERC20 _want
-    ) external override returns (uint256 mpId) {
+    ) external override returns (uint256) {
         require(
             _duration >= 1,
             "Fountain::configureMp: A Money Pool must be at least one day long"
@@ -355,7 +355,7 @@ contract FountainV1 is IFountainV1 {
     function sustain(address _owner, uint256 _amount)
         external
         override
-        returns (uint256 mpId)
+        returns (uint256)
     {
         return _sustain(_owner, _amount, _owner);
     }
@@ -369,7 +369,7 @@ contract FountainV1 is IFountainV1 {
         address _owner,
         uint256 _amount,
         address _beneficiary
-    ) external override returns (uint256 mpId) {
+    ) external override returns (uint256) {
         return _sustain(_owner, _amount, _beneficiary);
     }
 
@@ -379,7 +379,7 @@ contract FountainV1 is IFountainV1 {
     function collectRedistributions(uint256 _amount)
         external
         override
-        returns (bool success)
+        returns (bool)
     {
         // Iterate over all of sender's sustained addresses to make sure
         // redistribution has completed for all redistributable Money pools
@@ -399,7 +399,7 @@ contract FountainV1 is IFountainV1 {
     function collectRedistributionsFromAddress(uint256 _amount, address _from)
         external
         override
-        returns (bool success)
+        returns (bool)
     {
         _redistributeMp(_from);
         _performCollectRedistributions(_amount);
@@ -413,7 +413,7 @@ contract FountainV1 is IFountainV1 {
     function collectRedistributionsFromAddresses(
         uint256 _amount,
         address[] calldata _from
-    ) external override returns (bool success) {
+    ) external override returns (bool) {
         for (uint256 i = 0; i < _from.length; i++) {
             _redistributeMp(_from[i]);
         }
@@ -427,7 +427,7 @@ contract FountainV1 is IFountainV1 {
     function collectSustainments(uint256 _amount)
         external
         override
-        returns (bool success)
+        returns (bool)
     {
         require(
             sustainabilityPool[msg.sender] >= _amount,
@@ -457,7 +457,7 @@ contract FountainV1 is IFountainV1 {
         address _owner,
         uint256 _amount,
         address _beneficiary
-    ) private lock returns (uint256 mpId) {
+    ) private lock returns (uint256) {
         require(
             _amount > 0,
             "Fountain::sustain: The sustainment amount should be positive"
@@ -556,12 +556,12 @@ contract FountainV1 is IFountainV1 {
         private
         view
         returns (
-            IERC20 want,
-            uint256 target,
-            uint256 start,
-            uint256 duration,
-            uint256 sustainerCount,
-            uint256 balance
+            IERC20,
+            uint256,
+            uint256,
+            uint256,
+            uint256,
+            uint256
         )
     {
         MoneyPool memory _mp = mps[_mpId];
@@ -580,7 +580,7 @@ contract FountainV1 is IFountainV1 {
     /// @dev The Money pool that's next up for an owner.
     /// @param _owner The owner of the money pool being looked for.
     /// @return id The ID of the upcoming Money pool.
-    function _upcomingMpId(address _owner) private view returns (uint256 id) {
+    function _upcomingMpId(address _owner) private view returns (uint256) {
         uint256 _mpId = latestMpIds[_owner];
         if (_mpId == 0) return 0;
         // There is no upcoming moneyPool if the latest Money pool is not upcoming
@@ -591,7 +591,7 @@ contract FountainV1 is IFountainV1 {
     /// @dev The currently active Money pool for an owner.
     /// @param _owner The owner of the money pool being looked for.
     /// @return id The active Money pool's ID.
-    function _activeMpId(address _owner) private view returns (uint256 id) {
+    function _activeMpId(address _owner) private view returns (uint256) {
         uint256 _mpId = latestMpIds[_owner];
         if (_mpId == 0) return 0;
 
@@ -627,7 +627,7 @@ contract FountainV1 is IFountainV1 {
     /// @dev The sustainability of a Money pool cannot be updated if there have been sustainments made to it.
     /// @param _owner The address who owns the Money pool to look for.
     /// @return id The resulting ID.
-    function _mpIdToConfigure(address _owner) private returns (uint256 id) {
+    function _mpIdToConfigure(address _owner) private returns (uint256) {
         // Allow active moneyPool to be updated if it has no sustainments
         uint256 _mpId = _activeMpId(_owner);
         if (_mpId != 0 && mps[_mpId].balance == 0) return _mpId;
@@ -651,7 +651,7 @@ contract FountainV1 is IFountainV1 {
     /// @dev Only active Money pools can be sustained.
     /// @param _owner The address who owns the Money pool to look for.
     /// @return id The resulting ID.
-    function _mpIdToSustain(address _owner) private returns (uint256 id) {
+    function _mpIdToSustain(address _owner) private returns (uint256) {
         // Check if there is an active moneyPool
         uint256 _mpId = _activeMpId(_owner);
         if (_mpId != 0) return _mpId;
@@ -753,7 +753,7 @@ contract FountainV1 is IFountainV1 {
     /// @return newMpId The new Money pool's ID.
     function _createMpFromId(uint256 _baseMpId, uint256 _start)
         private
-        returns (uint256 newMpId)
+        returns (uint256)
     {
         MoneyPool storage _currentMp = mps[_baseMpId];
         require(
@@ -781,7 +781,7 @@ contract FountainV1 is IFountainV1 {
     /// @notice Initializes a Money pool to be sustained for the sending address.
     /// @param _owner The owner of the money pool being initialized.
     /// @return id The initialized Money pool's ID.
-    function _initMpId(address _owner) private returns (uint256 id) {
+    function _initMpId(address _owner) private returns (uint256) {
         mpCount++;
         // Must create structs that have mappings using this approach to avoid
         // the RHS creating a memory-struct that contains a mapping.
@@ -802,29 +802,21 @@ contract FountainV1 is IFountainV1 {
     /// @dev The Money pool that is the latest configured Money pool for the owner.
     /// @param _owner The owner of the money pool being looked for.
     /// @return id The latest Money pool's ID.
-    function _getLatestMpId(address _owner) private view returns (uint256 id) {
+    function _getLatestMpId(address _owner) private view returns (uint256) {
         return latestMpIds[_owner];
     }
 
     /// @dev Check to see if the given Money pool has started.
     /// @param _mp The Money pool to check.
     /// @return hasStarted The boolean result.
-    function _hasMpStarted(MoneyPool memory _mp)
-        private
-        view
-        returns (bool hasStarted)
-    {
+    function _hasMpStarted(MoneyPool memory _mp) private view returns (bool) {
         return now >= _mp.start;
     }
 
     /// @dev Check to see if the given MoneyPool has expired.
     /// @param _mp The Money pool to check.
     /// @return hasExpired The boolean result.
-    function _hasMpExpired(MoneyPool memory _mp)
-        private
-        view
-        returns (bool hasExpired)
-    {
+    function _hasMpExpired(MoneyPool memory _mp) private view returns (bool) {
         return now > _mp.start.add(_mp.duration.mul(1 days));
     }
 
@@ -835,7 +827,7 @@ contract FountainV1 is IFountainV1 {
     function _determineModuloStart(uint256 _oldEnd, uint256 _duration)
         private
         view
-        returns (uint256 start)
+        returns (uint256)
     {
         // Use the old end if the current time is still within the duration.
         if (_oldEnd.add(_duration) > now) return _oldEnd;
