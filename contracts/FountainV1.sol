@@ -268,10 +268,6 @@ contract FountainV1 is IFountainV1 {
     {
         MoneyPool memory _mp = mps[_mpId];
         require(_mp.exists, "Fountain::getSustainment: Money pool not found");
-        require(
-            _mp.owner == msg.sender || _state(_mpId) != MpState.Active,
-            "Fountain::getSustainment: Only the owner of an Money pool can get sustainments."
-        );
         return mps[_mpId].sustainments[_sustainer];
     }
 
