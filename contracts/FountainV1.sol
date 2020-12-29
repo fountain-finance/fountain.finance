@@ -39,13 +39,13 @@ contract FountainV1 is IFountainV1 {
     /// @dev entirely mutable until they become active.
     enum MpState {Upcoming, Active, Redistributing}
 
-    /// @notice The Money pool structure represents a Money pool stewarded by an address, and accounts for which addresses have contributed to it.
+    /// @notice The Money pool structure represents a project stewarded by an address, and accounts for which addresses have helped sustain the project.
     struct MoneyPool {
         // The address who defined this Money pool and who has access to its sustainments.
         address owner;
-        // // The addresses who own Money pools that this Money pool depends on.
-        // // Surplus from this Money pool will first go towards the sustainability of dependent's current MPs.
-        // address[] dependents;
+        // The addresses who own Money pools that this Money pool depends on.
+        // Surplus from this Money pool will first go towards the sustainability of dependent's current MPs.
+        address[] dependencies;
         // The token that this Money pool can be funded with.
         IERC20 want;
         // The amount that represents sustainability for this Money pool.
@@ -245,14 +245,15 @@ contract FountainV1 is IFountainV1 {
     }
 
     /// @dev The amount of sustainments accessible.
+    /// @param owner The owner to get the amount for.
     /// @return amount The amount.
-    function getSustainmentBalance()
+    function getSustainmentBalance(address owner)
         external
         view
         override
         returns (uint256 amount)
     {
-        return sustainabilityPool[msg.sender];
+        return sustainabilityPool[owner];
     }
 
     /// @dev The amount of sustainments in a Money pool that were contributed by the given address.
@@ -292,14 +293,15 @@ contract FountainV1 is IFountainV1 {
     }
 
     /// @dev The amount of redistribution accessible.
+    /// @param sustainer The sustainer to get the amount for.
     /// @return amount The amount.
-    function getRedistributionBalance()
+    function getRedistributionBalance(address sustainer)
         external
         view
         override
         returns (uint256 amount)
     {
-        return redistributionPool[msg.sender];
+        return redistributionPool[sustainer];
     }
 
     // --- external transactions --- //

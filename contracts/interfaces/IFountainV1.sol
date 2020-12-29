@@ -80,7 +80,10 @@ interface IFountainV1 {
 
     function getActiveMpId(address _owner) external view returns (uint256 id);
 
-    function getSustainmentBalance() external view returns (uint256 amount);
+    function getSustainmentBalance(address owner)
+        external
+        view
+        returns (uint256 amount);
 
     function getSustainment(uint256 _mpId, address _sustainer)
         external
@@ -92,7 +95,10 @@ interface IFountainV1 {
         view
         returns (uint256 amount);
 
-    function getRedistributionBalance() external view returns (uint256 amount);
+    function getRedistributionBalance(address sustainer)
+        external
+        view
+        returns (uint256 amount);
 
     function configureMp(
         uint256 _target,
