@@ -471,7 +471,7 @@ contract FountainV1 is IFountainV1 {
             "Fountain::sustain: Money pool owner not found"
         );
 
-        bool wasInactive = _currentMp.balance == 0;
+        bool _wasInactive = _currentMp.balance == 0;
 
         // Save if the message sender is contributing to this Money pool for the first time.
         bool _isNewSustainer = _currentMp.sustainments[_beneficiary] == 0;
@@ -530,7 +530,7 @@ contract FountainV1 is IFountainV1 {
             _amount
         );
 
-        if (wasInactive)
+        if (_wasInactive)
             // Emit an event since since is the first sustainment being made towards this Money pool.
             // NOTE: will emitting this event make the first sustainment of a MP significantly more costly in gas?
             emit ActivateMp(
