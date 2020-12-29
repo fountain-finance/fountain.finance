@@ -138,6 +138,8 @@ contract FountainV1 is IFountainV1 {
         address indexed beneficiary,
         address sustainer,
         uint256 amount
+        // address token,
+        // uint256 convertedAmount
     );
 
     /// This event should trigger when redistributions are collected.
@@ -453,9 +455,11 @@ contract FountainV1 is IFountainV1 {
     /// @param _amount Amount of sustainment.
     /// @param _beneficiary The address to associate with this sustainment. The mes.sender is making this sustainment on the beneficiary's behalf.
     /// @return mpId The ID of the Money pool that was successfully sustained.
+    /// TODO: Allow sustainments with other ERC-20 tokens like cDAI, aDAI, yDAI, ... .
     function _sustain(
         address _owner,
         uint256 _amount,
+        // IERC20 _token
         address _beneficiary
     ) private lock returns (uint256 mpId) {
         require(
@@ -476,13 +480,18 @@ contract FountainV1 is IFountainV1 {
         // Save if the message sender is contributing to this Money pool for the first time.
         bool _isNewSustainer = _currentMp.sustainments[_beneficiary] == 0;
 
+        uint256 _convertedAmount = _amount;
+        // Get the amount of the want token that can be traded for with the provided token amount.
+        // uint256 _convertedAmount =
+        //     _getConvertedAmount(_token, _amount, _currentMp.want);
+
         // The amount that should be reserved for the sustainability of the Money pool.
         // If the Money pool is already sustainable, set to 0.
         // If the Money pool is not yet sustainable even with the amount, set to the amount.
         // Otherwise set to the portion of the amount it'll take for sustainability to be reached
         uint256 _sustainabilityAmount;
-        if (_currentMp.balance.add(_amount) <= _currentMp.target) {
-            _sustainabilityAmount = _amount;
+        if (_currentMp.balance.add(_convertedAmount) <= _currentMp.target) {
+            _sustainabilityAmount = _convertedAmount;
         } else if (_currentMp.balance >= _currentMp.target) {
             _sustainabilityAmount = 0;
         } else {
@@ -493,10 +502,14 @@ contract FountainV1 is IFountainV1 {
         //https://ethereum.stackexchange.com/questions/60028/testing-transfer-of-tokens-with-truffle
         // Got it working in tests using MockContract, but need to verify it works in testnet.
         // Move the full sustainment amount to this address.
+        // TODO transfer from _token, not from _currentMp.want
         require(
             _currentMp.want.transferFrom(msg.sender, address(this), _amount),
             "Fountain::sustain: ERC20 transfer failed"
         );
+
+        /// TODO: Exhange provided token for the Money pool's want token.
+        // _swap(_token, _amount, _currentMp.want, _convertedAmount);
 
         // Increment the funds that can be collected from sustainability.
         sustainabilityPool[_owner] = sustainabilityPool[_owner].add(
@@ -507,10 +520,10 @@ contract FountainV1 is IFountainV1 {
         _currentMp.sustainments[_beneficiary] = _currentMp.sustainments[
             _beneficiary
         ]
-            .add(_amount);
+            .add(_convertedAmount);
 
         // Increment the total amount contributed to the sustainment of the Money pool.
-        _currentMp.balance = _currentMp.balance.add(_amount);
+        _currentMp.balance = _currentMp.balance.add(_convertedAmount);
 
         // Add the message sender as a sustainer of the Money pool if this is the first sustainment it's making to it.
         if (_isNewSustainer) _currentMp.sustainers.push(_beneficiary);
@@ -520,15 +533,6 @@ contract FountainV1 is IFountainV1 {
 
         // Redistribution amounts may have changed for the current Money pool.
         _updateTrackedRedistribution(_currentMp);
-
-        // Emit events.
-        emit SustainMp(
-            _mpId,
-            _currentMp.owner,
-            _beneficiary,
-            msg.sender,
-            _amount
-        );
 
         if (_wasInactive)
             // Emit an event since since is the first sustainment being made towards this Money pool.
@@ -540,6 +544,17 @@ contract FountainV1 is IFountainV1 {
                 _currentMp.duration,
                 _currentMp.want
             );
+
+        // Emit events.
+        emit SustainMp(
+            _mpId,
+            _currentMp.owner,
+            _beneficiary,
+            msg.sender,
+            _amount
+            // _token,
+            // _convertedAmount
+        );
 
         return _mpId;
     }
@@ -843,4 +858,32 @@ contract FountainV1 is IFountainV1 {
         uint256 _distanceToStart = (now.sub(_oldEnd)).mod(_duration);
         return now.sub(_distanceToStart);
     }
+
+    //TODO make this work
+    // /// @dev Get the amount of tokens that can be received for the specified amount of some other token.
+    // /// @param _baseToken The original amount.
+    // /// @param _baseAmount The amount of the base token to base the calculation on.
+    // /// @param _forToken The token to get the converted amount for.
+    // /// @returns _toAmount The amount of for tokens that can be exchanged for.
+    // function _getConvertedAmount(
+    //     IERC20 _fromToken,
+    //     uint256 _amount,
+    //     IERC20 _toToken
+    // ) private returns (uint256 convertedAmount) {
+    //     //Swap in uniswap.
+    // }
+
+    // /// @dev Swap tokens using a decentralized exchange.
+    // /// @param _fromToken The token to swap from.
+    // /// @param _fromAmount The amount of the from token to swap.
+    // /// @param _toToken The token to swap to.
+    // /// @param _toAmount The amount of the to token to swap for.
+    // function _swap(
+    //     IERC20 _fromToken,
+    //     uint256 _amount,
+    //     IERC20 _toToken
+    //     uint256 _convertedAmount,
+    // ) private {
+    //     //Swap in uniswap.
+    // }
 }
