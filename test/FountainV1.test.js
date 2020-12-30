@@ -309,38 +309,38 @@ contract("Fountain", ([owner, creator, sustainer, beneficiary]) => {
 
   describe("withdrawSustainments", async () => {});
 
-  describe("ERC20 failure conditions", async () => {
-    const initialTarget = 100;
-    const initialDuration = 30;
+  // describe("ERC20 failure conditions", async () => {
+  //   const initialTarget = 100;
+  //   const initialDuration = 30;
 
-    beforeEach(async () => {
-      // Instantiate mock and make it return false for any invocation
-      erc20Mock = await MockContract.new();
-      await erc20Mock.givenAnyReturnBool(false);
-      // instantiate Fountain with mocked contract
-      fountain = await Fountain.new(erc20Mock.address); // create new instance each test
-      await fountain.configureMp(
-        initialTarget,
-        initialDuration,
-        erc20Mock.address,
-        {
-          from: creator,
-        }
-      );
-    });
+  //   beforeEach(async () => {
+  //     // Instantiate mock and make it return false for any invocation
+  //     erc20Mock = await MockContract.new();
+  //     await erc20Mock.givenAnyReturnBool(false);
+  //     // instantiate Fountain with mocked contract
+  //     fountain = await Fountain.new(erc20Mock.address); // create new instance each test
+  //     await fountain.configureMp(
+  //       initialTarget,
+  //       initialDuration,
+  //       erc20Mock.address,
+  //       {
+  //         from: creator,
+  //       }
+  //     );
+  //   });
 
-    it("sustain fails when ERC20.transferFrom fails", async () => {
-      const amount = 10;
-      await truffleAssert.fails(
-        // Using "creator" address which has a moneyPool
-        fountain.sustain(creator, amount, sustainer, {
-          // Using address that did not create the MoneyPool
-          from: sustainer,
-        }),
-        truffleAssert.ErrorType.REVERT
-      );
-    });
-  });
+  //   it("sustain fails when ERC20.transferFrom fails", async () => {
+  //     const amount = 10;
+  //     await truffleAssert.fails(
+  //       // Using "creator" address which has a moneyPool
+  //       fountain.sustain(creator, amount, sustainer, {
+  //         // Using address that did not create the MoneyPool
+  //         from: sustainer,
+  //       }),
+  //       truffleAssert.ErrorType.REVERT
+  //     );
+  //   });
+  // });
 
   describe("Permissions failure conditions", async () => {
     const initialTarget = 100;
