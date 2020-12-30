@@ -173,16 +173,6 @@ exports.assertSustainabilityPoolAmount = async (
   assert.equal(currentAmount, amount, message);
 };
 
-exports.assertRedistributionPoolAmount = async (
-  instance,
-  address,
-  amount,
-  message
-) => {
-  const currentAmount = (await instance.redistributionPool(address)).toNumber();
-  assert.equal(currentAmount, amount, message);
-};
-
 exports.assertSustainedAddresses = async (
   instance,
   address,
@@ -191,14 +181,14 @@ exports.assertSustainedAddresses = async (
 ) => {
   for (let i = 0; i < sustainedAddresses.length; i++) {
     const sustainedAddress = sustainedAddresses[i];
-    const currentValue = await instance.sustainedAddressesBySustainer(
+    const currentValue = await instance.sustainedAddresses(
       address,
       i
     );
     assert.equal(currentValue, sustainedAddress, message);
   }
   truffleAssert.fails(
-    instance.sustainedAddressesBySustainer(address, sustainedAddresses.length),
+    instance.sustainedAddresses(address, sustainedAddresses.length),
     truffleAssert.ErrorType.INVALID_OPCODE
   );
 };

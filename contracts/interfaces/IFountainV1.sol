@@ -8,11 +8,6 @@ interface IFountainV1 {
 
     function latestMpIds(address _owner) external view returns (uint256);
 
-    function redistributionPool(address _sustainer)
-        external
-        view
-        returns (uint256 amount);
-
     function mpCount() external view returns (uint256);
 
     event InitializeMp(uint256 indexed id, address indexed owner);
@@ -79,8 +74,6 @@ interface IFountainV1 {
             uint256 balance
         );
 
-    function getUpcomingMpId(address _owner) external view returns (uint256 id);
-
     function getSustainmentBalance(address owner)
         external
         view
@@ -92,11 +85,6 @@ interface IFountainV1 {
         returns (uint256 amount);
 
     function getTrackedRedistribution(uint256 _mpId, address _sustainer)
-        external
-        view
-        returns (uint256 amount);
-
-    function getRedistributionBalance(address sustainer)
         external
         view
         returns (uint256 amount);
@@ -117,18 +105,15 @@ interface IFountainV1 {
         address _beneficiary
     ) external returns (uint256 mpId);
 
-    function collectRedistributions(uint256 _amount)
-        external
-        returns (bool success);
+    function collectRedistributions() external returns (uint256 amount);
 
-    function collectRedistributionsFromAddress(uint256 _amount, address _from)
+    function collectRedistributionsFromAddress(address _from)
         external
-        returns (bool success);
+        returns (uint256 amount);
 
-    function collectRedistributionsFromAddresses(
-        uint256 _amount,
-        address[] calldata _from
-    ) external returns (bool success);
+    function collectRedistributionsFromAddresses(address[] calldata _from)
+        external
+        returns (uint256 amount);
 
     function collectSustainments(uint256 _amount)
         external
