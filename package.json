@@ -7,7 +7,7 @@
     "remix": "remixd -s . --remix-ide https://remix.ethereum.org",
     "deploy-ropsten": "truffle deploy --network ropsten",
     "migrate": "truffle migrate -network development",
-    "ganache": "ganache-cli -p 8545"
+    "ganache": "ganache-cli -p 8544"
   },
   "repository": {
     "type": "git",
