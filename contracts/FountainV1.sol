@@ -238,18 +238,6 @@ contract FountainV1 is IFountainV1 {
         return _upcomingMpId(_owner);
     }
 
-    /// @dev The ID of the currently active Money pool for an owner.
-    /// @param _owner The owner of the money pool being looked for.
-    /// @return id The active Money pool's ID.
-    function getActiveMpId(address _owner)
-        external
-        view
-        override
-        returns (uint256)
-    {
-        return _activeMpId(_owner);
-    }
-
     /// @dev The amount of sustainments accessible.
     /// @param owner The owner to get the amount for.
     /// @return amount The amount.
