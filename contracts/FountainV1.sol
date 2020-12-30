@@ -65,7 +65,7 @@ contract FountainV1 is IFountainV1 {
         address[] sustainers;
         // The amount each address has contributed to the sustaining of this Money pool.
         mapping(address => uint256) sustainments;
-        // The amount of available funds that have been collected by the owner.
+        // The amount of available funds that have been tapped by the owner.
         uint256 tapped;
         // The Money pool's version.
         uint8 version;
