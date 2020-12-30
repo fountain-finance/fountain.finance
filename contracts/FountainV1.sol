@@ -150,6 +150,7 @@ contract FountainV1 is IFountainV1 {
 
     /// @dev The properties of the given Money pool.
     /// @param _mpId The ID of the Money pool to get the properties of.
+    /// @return id The ID of the Money pool.
     /// @return want The token the Money pool wants.
     /// @return target The amount of the want token this Money pool is targeting.
     /// @return start The time when this Money pool started.
@@ -161,6 +162,7 @@ contract FountainV1 is IFountainV1 {
         view
         override
         returns (
+            uint256 id,
             IERC20 want,
             uint256 target,
             uint256 start,
@@ -174,6 +176,7 @@ contract FountainV1 is IFountainV1 {
 
     /// @dev The Money pool that's next up for an owner.
     /// @param _owner The owner of the Money pool being looked for.
+    /// @return id The ID of the Money pool.
     /// @return want The token the Money pool wants.
     /// @return target The amount of the want token this Money pool is targeting.
     /// @return start The time when this Money pool started.
@@ -185,6 +188,7 @@ contract FountainV1 is IFountainV1 {
         view
         override
         returns (
+            uint256 id,
             IERC20 want,
             uint256 target,
             uint256 start,
@@ -198,6 +202,7 @@ contract FountainV1 is IFountainV1 {
 
     /// @dev The currently active Money pool for an owner.
     /// @param _owner The owner of the money pool being looked for.
+    /// @return id The ID of the Money pool.
     /// @return want The token the Money pool wants.
     /// @return target The amount of the want token this Money pool is targeting.
     /// @return start The time when this Money pool started.
@@ -209,6 +214,7 @@ contract FountainV1 is IFountainV1 {
         view
         override
         returns (
+            uint256 id,
             IERC20 want,
             uint256 target,
             uint256 start,
@@ -539,6 +545,7 @@ contract FountainV1 is IFountainV1 {
 
     /// @dev The properties of the given Money pool.
     /// @param _mpId The ID of the Money pool to get the properties of.
+    /// @return id The ID of the Money pool.
     /// @return want The token the Money pool wants.
     /// @return target The amount of the want token this Money pool is targeting.
     /// @return start The time when this Money pool started.
@@ -549,6 +556,7 @@ contract FountainV1 is IFountainV1 {
         private
         view
         returns (
+            uint256,
             IERC20,
             uint256,
             uint256,
@@ -561,6 +569,7 @@ contract FountainV1 is IFountainV1 {
         require(_mp.exists, "Fountain::_mpProperties: Money pool not found");
 
         return (
+            _mpId,
             _mp.want,
             _mp.target,
             _mp.start,

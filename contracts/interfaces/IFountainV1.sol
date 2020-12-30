@@ -44,6 +44,7 @@ interface IFountainV1 {
         external
         view
         returns (
+            uint256 id,
             IERC20 want,
             uint256 target,
             uint256 start,
@@ -56,6 +57,7 @@ interface IFountainV1 {
         external
         view
         returns (
+            uint256 id,
             IERC20 want,
             uint256 target,
             uint256 start,
@@ -68,6 +70,7 @@ interface IFountainV1 {
         external
         view
         returns (
+            uint256 id,
             IERC20 want,
             uint256 target,
             uint256 start,
