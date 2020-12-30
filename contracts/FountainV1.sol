@@ -389,7 +389,7 @@ contract FountainV1 is IFountainV1 {
     function collectRedistributionsFromAddresses(address[] calldata _from)
         external
         override
-        lockWithdrawRedistribution
+        lockCollectRedistribution
         returns (uint256)
     {
         uint256 _amount = _getRedistributionAmount(msg.sender, _from);
