@@ -411,9 +411,8 @@ contract FountainV1 is IFountainV1 {
         uint256 _amount,
         address[] calldata _from
     ) external override returns (bool) {
-        for (uint256 i = 0; i < _from.length; i++) {
-            _redistributeMp(_from[i]);
-        }
+        for (uint256 i = 0; i < _from.length; i++) _redistributeMp(_from[i]);
+
         _performCollectRedistributions(_amount);
         return true;
     }
