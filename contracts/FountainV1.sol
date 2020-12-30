@@ -73,18 +73,38 @@ contract FountainV1 is IFountainV1 {
     }
 
     // Wrap the sustain transaction in a lock to prevent reentrency.
-    uint256 private unlocked = 1;
-    modifier lock() {
-        require(unlocked == 1, "Fountain: locked");
-        unlocked = 0;
+    uint256 private sustainUnlocked = 1;
+
+    modifier lockSustain() {
+        require(sustainUnlocked == 1, "Fountain: sustainment locked");
+        sustainUnlocked = 0;
         _;
-        unlocked = 1;
+        sustainUnlocked = 1;
+    }
+
+    // Wrap the withdraw redistribution transaction in a lock to prevent reentrency.
+    uint256 private withdrawRedistributionUnlocked = 1;
+    modifier lockWithdrawRedistribution() {
+        require(
+            sustainUnlocked == 1,
+            "Fountain: withdraw redistribution locked"
+        );
+        sustainUnlocked = 0;
+        _;
+        sustainUnlocked = 1;
     }
 
     // --- private properties --- //
 
     // The official record of all Money pools ever created
     mapping(uint256 => MoneyPool) private mps;
+
+    // List of addresses sustained by each sustainer
+    mapping(address => address[]) private sustainedAddresses;
+
+    // Map of whether or not an address has sustained another address.
+    mapping(address => mapping(address => bool))
+        private sustainedAddressTracker;
 
     // --- public properties --- //
 
@@ -100,9 +120,6 @@ contract FountainV1 is IFountainV1 {
     // The total number of Money pools created, which is used for issuing Money pool IDs.
     // Money pools should have an ID > 0.
     uint256 public override mpCount;
-
-    // List of addresses sustained by each sustainer
-    mapping(address => address[]) public sustainedAddresses;
 
     // The contract currently only supports sustainments in dai.
     IERC20 public dai;
@@ -337,7 +354,12 @@ contract FountainV1 is IFountainV1 {
 
     /// @dev A message sender can collect what's been redistributed to it by Money pools once they have expired.
     /// @return amount If the collecting was a success.
-    function collectRedistributions() external override returns (uint256) {
+    function collectRedistributions()
+        external
+        override
+        lockWithdrawRedistribution
+        returns (uint256)
+    {
         // Iterate over all of sender's sustained addresses to make sure
         // redistribution has completed for all redistributable Money pools
         uint256 _amount =
@@ -356,6 +378,7 @@ contract FountainV1 is IFountainV1 {
     function collectRedistributionsFromAddress(address _from)
         external
         override
+        lockWithdrawRedistribution
         returns (uint256)
     {
         uint256 _amount = _getRedistributionAmount(msg.sender, _from);
@@ -369,6 +392,7 @@ contract FountainV1 is IFountainV1 {
     function collectRedistributionsFromAddresses(address[] calldata _from)
         external
         override
+        lockWithdrawRedistribution
         returns (uint256)
     {
         uint256 _amount = _getRedistributionAmount(msg.sender, _from);
@@ -389,10 +413,18 @@ contract FountainV1 is IFountainV1 {
             "Fountain::collectSustainments: This address doesn't have enough to collect this much."
         );
 
+        uint256 _originalAmount = sustainabilityPool[msg.sender];
+
         dai.safeTransferFrom(address(this), msg.sender, _amount);
 
         sustainabilityPool[msg.sender] = sustainabilityPool[msg.sender].sub(
             _amount
+        );
+
+        // Prevent reentrency during external call to safeTransferFrom.
+        require(
+            sustainabilityPool[msg.sender].add(_amount) == _originalAmount,
+            "Fountain::collectSustainments: The amounts do not add up."
         );
 
         emit CollectSustainements(msg.sender, _amount);
@@ -412,7 +444,7 @@ contract FountainV1 is IFountainV1 {
         address _owner,
         uint256 _amount,
         address _beneficiary
-    ) private lock returns (uint256) {
+    ) private lockSustain returns (uint256) {
         require(
             _amount > 0,
             "Fountain::sustain: The sustainment amount should be positive"
@@ -471,7 +503,10 @@ contract FountainV1 is IFountainV1 {
         if (_isNewSustainer) _currentMp.sustainers.push(_beneficiary);
 
         // Add this address to the sustainer's list of sustained addresses
-        sustainedAddresses[_beneficiary].push(_owner);
+        if (sustainedAddressTracker[_beneficiary][_owner] == false) {
+            sustainedAddresses[_beneficiary].push(_owner);
+            sustainedAddressTracker[_beneficiary][_owner] == true;
+        }
 
         // Emit events.
         emit SustainMp(
@@ -583,6 +618,7 @@ contract FountainV1 is IFountainV1 {
 
         require(_mpId > 0, "Fountain::mpIdToSustain: Money pool not found");
 
+        // TODO check memory with Austin
         MoneyPool memory _latestMp = mps[_mpId];
         // Use a start date that's a multiple of the duration.
         // This creates the effect that there have been scheduled Money pools ever since the `latest`, even if `latest` is a long time in the past.
@@ -593,22 +629,6 @@ contract FountainV1 is IFountainV1 {
             );
 
         return _createMpFromId(_mpId, _start);
-    }
-
-    /// @dev Proportionally allocate the specified amount to the contributors of the specified Money pool,
-    /// @dev meaning each sustainer will receive a portion of the specified amount equivalent to the portion of the total
-    /// @dev amount contributed to the sustainment of the Money pool that they are responsible for.
-    /// @param _mpId The ID of the Money pool to update.
-    function _updateTrackedRedistribution(uint256 _mpId, address _sustainer)
-        private
-    {
-        MoneyPool storage _mp = mps[_mpId];
-
-        //Store the updated redistribution in the Money pool.
-        _mp.redistributionTracker[_sustainer] = _trackedRedistribution(
-            _mpId,
-            _sustainer
-        );
     }
 
     /// @dev Take the amount that should be redistributed to the given sustainer by the given owner's Money pools.
@@ -638,7 +658,10 @@ contract FountainV1 is IFountainV1 {
     {
         uint256 _amount = 0;
         uint256 _mpId = latestMpIds[_owner];
-        require(_mpId > 0, "Fountain::redistributeMp: Money Pool not found");
+        require(
+            _mpId > 0,
+            "Fountain::_getRedistributionAmount: Money Pool not found"
+        );
         MoneyPool storage _mp = mps[_mpId];
 
         // Iterate through all Money pools for this address. For each iteration,
@@ -663,20 +686,20 @@ contract FountainV1 is IFountainV1 {
         return _amount;
     }
 
-    /// @dev The state the Money pool for the given ID is in.
-    /// @param _mpId The ID of the Money pool to get the state of.
-    /// @return state The state.
-    function _state(uint256 _mpId) private view returns (MpState) {
-        require(
-            mpCount >= _mpId && _mpId > 0,
-            "Fountain::_state: Invalid Money pool ID"
-        );
-        MoneyPool memory _mp = mps[_mpId];
-        require(_mp.exists, "Fountain::_state: Invalid Money Pool");
+    /// @dev Proportionally allocate the specified amount to the contributors of the specified Money pool,
+    /// @dev meaning each sustainer will receive a portion of the specified amount equivalent to the portion of the total
+    /// @dev amount contributed to the sustainment of the Money pool that they are responsible for.
+    /// @param _mpId The ID of the Money pool to update.
+    function _updateTrackedRedistribution(uint256 _mpId, address _sustainer)
+        private
+    {
+        MoneyPool storage _mp = mps[_mpId];
 
-        if (_hasMpExpired(_mp)) return MpState.Redistributing;
-        if (_hasMpStarted(_mp)) return MpState.Active;
-        return MpState.Upcoming;
+        //Store the updated redistribution in the Money pool.
+        _mp.redistributionTracker[_sustainer] = _trackedRedistribution(
+            _mpId,
+            _sustainer
+        );
     }
 
     /// @dev Returns a copy of the given Money pool with reset sustainments.
@@ -781,6 +804,22 @@ contract FountainV1 is IFountainV1 {
         // There is no upcoming Money pool if the latest Money pool is not upcoming
         if (_state(_mpId) != MpState.Upcoming) return 0;
         return _mpId;
+    }
+
+    /// @dev The state the Money pool for the given ID is in.
+    /// @param _mpId The ID of the Money pool to get the state of.
+    /// @return state The state.
+    function _state(uint256 _mpId) private view returns (MpState) {
+        require(
+            mpCount >= _mpId && _mpId > 0,
+            "Fountain::_state: Invalid Money pool ID"
+        );
+        MoneyPool memory _mp = mps[_mpId];
+        require(_mp.exists, "Fountain::_state: Invalid Money Pool");
+
+        if (_hasMpExpired(_mp)) return MpState.Redistributing;
+        if (_hasMpStarted(_mp)) return MpState.Active;
+        return MpState.Upcoming;
     }
 
     /// @dev Check to see if the given Money pool has started.
