@@ -338,23 +338,10 @@ contract FountainV1 is IFountainV1 {
         return _mpId;
     }
 
-    /// @dev Contribute a specified amount to the sustainability of the specified address's active Money pool.
-    /// @dev If the amount results in surplus, redistribute the surplus proportionally to sustainers of the Money pool.
-    /// @param _owner The owner of the Money pool to sustain.
-    /// @param _amount Amount of sustainment.
-    /// @return mpId The ID of the Money pool that was successfully sustained.
-    function sustain(address _owner, uint256 _amount)
-        external
-        override
-        returns (uint256)
-    {
-        return _sustain(_owner, _amount, _owner);
-    }
-
     /// @dev Overloaded from above with the addition of:
     /// @param _owner The owner of the Money pool to sustain.
     /// @param _amount Amount of sustainment.
-    /// @param _beneficiary The address to associate with this sustainment. The mes.sender is making this sustainment on the beneficiary's behalf.
+    /// @param _beneficiary The address to associate with this sustainment. This is usually mes.sender, but can be something else if the sender is making this sustainment on the beneficiary's behalf.
     /// @return mpId The ID of the Money pool that was successfully sustained.
     function sustain(
         address _owner,
@@ -735,6 +722,7 @@ contract FountainV1 is IFountainV1 {
         MoneyPool storage _newMp = mps[mpCount];
         _newMp.owner = _owner;
         _newMp.total = 0;
+        _newMp.tapped = 0;
         _newMp.exists = true;
         _newMp.version = 1;
 
