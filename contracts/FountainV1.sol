@@ -80,15 +80,15 @@ contract FountainV1 is IFountainV1 {
     }
 
     // Wrap the withdraw redistribution transaction in a lock to prevent reentrency.
-    uint256 private withdrawRedistributionUnlocked = 1;
-    modifier lockWithdrawRedistribution() {
+    uint256 private collectRedistributionUnlocked = 1;
+    modifier lockCollectRedistribution() {
         require(
-            sustainUnlocked == 1,
-            "Fountain: withdraw redistribution locked"
+            collectRedistributionUnlocked == 1,
+            "Fountain: collect redistribution locked"
         );
-        sustainUnlocked = 0;
+        collectRedistributionUnlocked = 0;
         _;
-        sustainUnlocked = 1;
+        collectRedistributionUnlocked = 1;
     }
 
     // --- private properties --- //
@@ -354,7 +354,7 @@ contract FountainV1 is IFountainV1 {
     function collectRedistributions()
         external
         override
-        lockWithdrawRedistribution
+        lockCollectRedistribution
         returns (uint256)
     {
         // Iterate over all of sender's sustained addresses to make sure
