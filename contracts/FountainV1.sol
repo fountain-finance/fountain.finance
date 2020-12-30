@@ -81,7 +81,7 @@ contract FountainV1 is IFountainV1 {
         sustainUnlocked = 1;
     }
 
-    // Wrap the withdraw redistribution transaction in a lock to prevent reentrency.
+    // Wrap the collect redistribution transaction in a lock to prevent reentrency.
     uint256 private collectRedistributionUnlocked = 1;
     modifier lockCollectRedistribution() {
         require(
@@ -91,6 +91,18 @@ contract FountainV1 is IFountainV1 {
         collectRedistributionUnlocked = 0;
         _;
         collectRedistributionUnlocked = 1;
+    }
+
+    // Wrap the collect sustainments transaction in a lock to prevent reentrency.
+    uint256 private collectSustainmentUnlocked = 1;
+    modifier lockCollectSustainment() {
+        require(
+            collectRedistributionUnlocked == 1,
+            "Fountain: collect sustainment locked"
+        );
+        collectSustainmentUnlocked = 0;
+        _;
+        collectSustainmentUnlocked = 1;
     }
 
     // --- private properties --- //
@@ -399,7 +411,12 @@ contract FountainV1 is IFountainV1 {
 
     /// @dev A message sender can collect funds that have been used to sustain it's Money pools.
     /// @return success If the collecting was a success.
-    function collectSustainments() external override returns (uint256) {
+    function collectSustainments()
+        external
+        override
+        lockCollectSustainment
+        returns (uint256)
+    {
         uint256 _amount = _tapAmount(msg.sender);
         _performCollectSustainments(msg.sender, _amount);
         return _amount;
