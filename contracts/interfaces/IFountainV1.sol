@@ -33,7 +33,7 @@ interface IFountainV1 {
         uint256 amount
     );
     event CollectRedistributions(address indexed sustainer, uint256 amount);
-    event CollectSustainements(address indexed owner, uint256 amount);
+    event CollectSustainments(address indexed owner, uint256 amount);
 
     function getMp(uint256 _mpId)
         external
@@ -74,7 +74,7 @@ interface IFountainV1 {
             uint256 balance
         );
 
-    function getSustainmentBalance(address owner)
+    function getSustainmentBalance(uint256 _mpId)
         external
         view
         returns (uint256 amount);
@@ -115,7 +115,5 @@ interface IFountainV1 {
         external
         returns (uint256 amount);
 
-    function collectSustainments(uint256 _amount)
-        external
-        returns (bool success);
+    function collectSustainments() external returns (uint256 amount);
 }
