@@ -65,7 +65,7 @@ contract FountainV1 is IFountainV1 {
         address[] sustainers;
         // The amount each address has contributed to the sustaining of this Money pool.
         mapping(address => uint256) sustainments;
-        // The amount of available funds that has been collected by the owner.
+        // The amount of available funds that have been collected by the owner.
         uint256 tapped;
         // The Money pool's version.
         uint8 version;
@@ -118,9 +118,6 @@ contract FountainV1 is IFountainV1 {
         private sustainedAddressTracker;
 
     // --- public properties --- //
-
-    // The funds that have accumulated to sustain each address's Money pools.
-    // mapping(address => uint256) public sustainabilityPool;
 
     /// @notice A mapping from Money pool id's the the id of the previous Money pool for the same owner.
     mapping(uint256 => uint256) public override previousMpIds;

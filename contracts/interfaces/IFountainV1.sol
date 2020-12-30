@@ -95,10 +95,6 @@ interface IFountainV1 {
         IERC20 _want
     ) external returns (uint256 mpId);
 
-    function sustain(address _owner, uint256 _amount)
-        external
-        returns (uint256 mpId);
-
     function sustain(
         address _owner,
         uint256 _amount,
