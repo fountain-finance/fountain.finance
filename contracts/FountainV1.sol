@@ -43,9 +43,9 @@ contract FountainV1 is IFountainV1 {
     struct MoneyPool {
         // The address who defined this Money pool and who has access to its sustainments.
         address owner;
-        // The addresses who own Money pools that this Money pool depends on.
-        // Surplus from this Money pool will first go towards the sustainability of dependent's current MPs.
-        address[] dependencies;
+        // // The addresses who own Money pools that this Money pool depends on.
+        // // Surplus from this Money pool will first go towards the sustainability of dependent's current MPs.
+        // address[] dependencies;
         // The token that this Money pool can be funded with.
         IERC20 want;
         // The amount that represents sustainability for this Money pool.
@@ -274,10 +274,6 @@ contract FountainV1 is IFountainV1 {
     {
         MoneyPool memory _mp = mps[_mpId];
         require(_mp.exists, "Fountain::getSustainment: Money pool not found");
-        require(
-            _mp.owner == msg.sender || _state(_mpId) != MpState.Active,
-            "Fountain::getSustainment: Only the owner of an Money pool can get sustainments."
-        );
         return mps[_mpId].sustainments[_sustainer];
     }
 
