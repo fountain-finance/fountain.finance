@@ -81,8 +81,6 @@ interface IFountainV1 {
 
     function getUpcomingMpId(address _owner) external view returns (uint256 id);
 
-    function getActiveMpId(address _owner) external view returns (uint256 id);
-
     function getSustainmentBalance(address owner)
         external
         view
