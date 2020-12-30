@@ -439,10 +439,7 @@ contract FountainV1 is IFountainV1 {
         //https://ethereum.stackexchange.com/questions/60028/testing-transfer-of-tokens-with-truffle
         // Got it working in tests using MockContract, but need to verify it works in testnet.
         // Move the full sustainment amount to this address.
-        require(
-            _currentMp.want.transferFrom(msg.sender, address(this), _amount),
-            "Fountain::sustain: ERC20 transfer failed"
-        );
+        _currentMp.want.transferFrom(msg.sender, address(this), _amount);
 
         // Increment the sustainments to the Money pool made by the message sender.
         _currentMp.sustainments[_beneficiary] = _currentMp.sustainments[
