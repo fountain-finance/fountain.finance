@@ -14,7 +14,6 @@ const {
   assertSustainmentAmount,
   assertRedistributionTrackerAmount,
   assertSustainabilityPoolAmount,
-  assertSustainedAddresses,
 } = require("../test-helpers/assertions.js");
 
 // TODO: document owner, creator, sustainer
@@ -185,8 +184,7 @@ contract("Fountain", ([owner, creator, sustainer, beneficiary]) => {
         expectedRedistributionTrackerAmount: 0,
         expectedSustainabilityPoolAmount: 10,
         expectedRedistributionPoolAmount: 0,
-        expectedSustainerCount: 1,
-        expectedSustainedAddresses: [creator],
+        expectedSustainerCount: 1
       },
       {
         description: "sustainment equal to target",
@@ -197,8 +195,7 @@ contract("Fountain", ([owner, creator, sustainer, beneficiary]) => {
         expectedRedistributionTrackerAmount: 0,
         expectedSustainabilityPoolAmount: 100,
         expectedRedistributionPoolAmount: 0,
-        expectedSustainerCount: 1,
-        expectedSustainedAddresses: [creator],
+        expectedSustainerCount: 1
       },
       {
         description: "sustainment greater than target",
@@ -209,8 +206,7 @@ contract("Fountain", ([owner, creator, sustainer, beneficiary]) => {
         expectedRedistributionTrackerAmount: 50,
         expectedSustainabilityPoolAmount: 100,
         expectedRedistributionPoolAmount: 0, // Redistribution hasn't triggered yet
-        expectedSustainerCount: 1,
-        expectedSustainedAddresses: [creator],
+        expectedSustainerCount: 1
       },
       {
         description: "beneficiary different from message sender",
@@ -221,8 +217,7 @@ contract("Fountain", ([owner, creator, sustainer, beneficiary]) => {
         expectedRedistributionTrackerAmount: 50,
         expectedSustainabilityPoolAmount: 100,
         expectedRedistributionPoolAmount: 0, // Redistribution hasn't triggered yet
-        expectedSustainerCount: 1,
-        expectedSustainedAddresses: [creator],
+        expectedSustainerCount: 1
       },
     ];
 
@@ -281,12 +276,6 @@ contract("Fountain", ([owner, creator, sustainer, beneficiary]) => {
           creator,
           scenario.expectedSustainabilityPoolAmount,
           "Invalid sustainabilityPool amount"
-        );
-        await assertSustainedAddresses(
-          fountain,
-          scenario.beneficiary,
-          scenario.expectedSustainedAddresses,
-          "Invalid sustainedAddressCount amount"
         );
       });
     });
@@ -373,44 +362,4 @@ contract("Fountain", ([owner, creator, sustainer, beneficiary]) => {
       );
     });
   });
-
-  // // it("should contribute correctly", async () => {
-  // //   const instance = await Fountain.deployed();
-  // //   await instance.contribute(accounts[0], 10, { from: accounts[1] });
-  // //   const contribution = (
-  // //     await instance.getContribution.call(accounts[0], accounts[1])
-  // //   ).toNumber();
-  // //   // const accountOne = (await metaCoinInstance.getBalance.call(accountOne)).toNumber();
-
-  // //   assert.equal(contribution, 10, "hmm");
-  // // });
-  // // it('should call a function that depends on a linked library', async () => {
-  // //   const metaCoinInstance = await MetaCoin.deployed();
-  // //   const metaCoinBalance = (await metaCoinInstance.getBalance.call(accounts[0])).toNumber();
-  // //   const metaCoinEthBalance = (await metaCoinInstance.getBalanceInEth.call(accounts[0])).toNumber();
-
-  // //   assert.equal(metaCoinEthBalance, 2 * metaCoinBalance, 'Library function returned unexpected function, linkage may be broken');
-  // // });
-  // // it('should send coin correctly', async () => {
-  // //   const metaCoinInstance = await MetaCoin.deployed();
-
-  // //   // Setup 2 accounts.
-  // //   const accountOne = accounts[0];
-  // //   const accountTwo = accounts[1];
-
-  // //   // Get initial balances of first and second account.
-  // //   const accountOneStartingBalance = (await metaCoinInstance.getBalance.call(accountOne)).toNumber();
-  // //   const accountTwoStartingBalance = (await metaCoinInstance.getBalance.call(accountTwo)).toNumber();
-
-  // //   // Make transaction from first account to second.
-  // //   const amount = 10;
-  // //   await metaCoinInstance.sendCoin(accountTwo, amount, { from: accountOne });
-
-  // //   // Get balances of first and second account after the transactions.
-  // //   const accountOneEndingBalance = (await metaCoinInstance.getBalance.call(accountOne)).toNumber();
-  // //   const accountTwoEndingBalance = (await metaCoinInstance.getBalance.call(accountTwo)).toNumber();
-
-  // //   assert.equal(accountOneEndingBalance, accountOneStartingBalance - amount, "Amount wasn't correctly taken from the sender");
-  // //   assert.equal(accountTwoEndingBalance, accountTwoStartingBalance + amount, "Amount wasn't correctly sent to the receiver");
-  // // });
 });
