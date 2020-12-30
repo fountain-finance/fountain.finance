@@ -51,7 +51,7 @@ contract FountainV1 is IFountainV1 {
         // The amount that represents sustainability for this Money pool.
         uint256 target;
         // The running amount that's been contributed to sustaining this Money pool.
-        uint256 balance;
+        uint256 total;
         // The time when this Money pool will become active.
         uint256 start;
         // The number of seconds until this Money pool's surplus is redistributed.
@@ -169,7 +169,7 @@ contract FountainV1 is IFountainV1 {
     /// @return start The time when this Money pool started.
     /// @return duration The duration of this Money pool measured in seconds.
     /// @return sustainerCount The number of addresses that have sustained this Money pool.
-    /// @return balance The balance of the Money pool. Returns 0 if the Money pool isn't owned by the message sender.
+    /// @return total The total amount passed through the Money pool. Returns 0 if the Money pool isn't owned by the message sender.
     function getMp(uint256 _mpId)
         external
         view
@@ -181,7 +181,7 @@ contract FountainV1 is IFountainV1 {
             uint256 start,
             uint256 duration,
             uint256 sustainerCount,
-            uint256 balance
+            uint256 total
         )
     {
         return _mpProperties(_mpId);
@@ -195,7 +195,7 @@ contract FountainV1 is IFountainV1 {
     /// @return start The time when this Money pool started.
     /// @return duration The duration of this Money pool measured in seconds.
     /// @return sustainerCount The number of addresses that have sustained this Money pool.
-    /// @return balance The balance of the Money pool. Returns 0 if the Money pool isn't owned by the message sender.
+    /// @return total The total amount passed through the Money pool. Returns 0 if the Money pool isn't owned by the message sender.
     function getUpcomingMp(address _owner)
         external
         view
@@ -207,7 +207,7 @@ contract FountainV1 is IFountainV1 {
             uint256 start,
             uint256 duration,
             uint256 sustainerCount,
-            uint256 balance
+            uint256 total
         )
     {
         return _mpProperties(_upcomingMpId(_owner));
@@ -221,7 +221,7 @@ contract FountainV1 is IFountainV1 {
     /// @return start The time when this Money pool started.
     /// @return duration The duration of this Money pool measured in seconds.
     /// @return sustainerCount The number of addresses that have sustained this Money pool.
-    /// @return balance The balance of the Money pool. Returns 0 if the Money pool isn't owned by the message sender.
+    /// @return total The total amount passed through the Money pool. Returns 0 if the Money pool isn't owned by the message sender.
     function getActiveMp(address _owner)
         external
         view
@@ -233,7 +233,7 @@ contract FountainV1 is IFountainV1 {
             uint256 start,
             uint256 duration,
             uint256 sustainerCount,
-            uint256 balance
+            uint256 total
         )
     {
         return _mpProperties(_activeMpId(_owner));
@@ -455,7 +455,7 @@ contract FountainV1 is IFountainV1 {
             "Fountain::sustain: Money pool owner not found"
         );
 
-        bool _wasInactive = _currentMp.balance == 0;
+        bool _wasInactive = _currentMp.total == 0;
 
         // Save if the message sender is contributing to this Money pool for the first time.
         bool _isNewSustainer = _currentMp.sustainments[_beneficiary] == 0;
@@ -465,12 +465,12 @@ contract FountainV1 is IFountainV1 {
         // If the Money pool is not yet sustainable even with the amount, set to the amount.
         // Otherwise set to the portion of the amount it'll take for sustainability to be reached
         uint256 _sustainabilityAmount;
-        if (_currentMp.balance.add(_amount) <= _currentMp.target) {
+        if (_currentMp.total.add(_amount) <= _currentMp.target) {
             _sustainabilityAmount = _amount;
-        } else if (_currentMp.balance >= _currentMp.target) {
+        } else if (_currentMp.total >= _currentMp.target) {
             _sustainabilityAmount = 0;
         } else {
-            _sustainabilityAmount = _currentMp.target.sub(_currentMp.balance);
+            _sustainabilityAmount = _currentMp.target.sub(_currentMp.total);
         }
 
         // TODO: Not working.`Returned error: VM Exception while processing transaction: revert`
@@ -494,7 +494,7 @@ contract FountainV1 is IFountainV1 {
             .add(_amount);
 
         // Increment the total amount contributed to the sustainment of the Money pool.
-        _currentMp.balance = _currentMp.balance.add(_amount);
+        _currentMp.total = _currentMp.total.add(_amount);
 
         // Add the message sender as a sustainer of the Money pool if this is the first sustainment it's making to it.
         if (_isNewSustainer) _currentMp.sustainers.push(_beneficiary);
@@ -536,7 +536,7 @@ contract FountainV1 is IFountainV1 {
     /// @return start The time when this Money pool started.
     /// @return duration The duration of this Money pool, measured in seconds.
     /// @return sustainerCount The number of addresses that have sustained this Money pool.
-    /// @return balance The balance of the Money pool.
+    /// @return total The total amount passed through the Money pool. Returns 0 if the Money pool isn't owned by the message sender.
     function _mpProperties(uint256 _mpId)
         private
         view
@@ -560,7 +560,7 @@ contract FountainV1 is IFountainV1 {
             _mp.start,
             _mp.duration,
             _mp.sustainers.length,
-            _mp.balance
+            _mp.total
         );
     }
 
@@ -580,7 +580,7 @@ contract FountainV1 is IFountainV1 {
     function _mpIdToConfigure(address _owner) private returns (uint256) {
         // Allow active moneyPool to be updated if it has no sustainments
         uint256 _mpId = _activeMpId(_owner);
-        if (_mpId != 0 && mps[_mpId].balance == 0) return _mpId;
+        if (_mpId != 0 && mps[_mpId].total == 0) return _mpId;
 
         // Cannot update active moneyPool, check if there is a upcoming moneyPool
         _mpId = _upcomingMpId(_owner);
@@ -725,7 +725,7 @@ contract FountainV1 is IFountainV1 {
         // See https://ethereum.stackexchange.com/a/72310
         MoneyPool storage _newMp = mps[mpCount];
         _newMp.owner = _owner;
-        _newMp.balance = 0;
+        _newMp.total = 0;
         _newMp.exists = true;
         _newMp.version = 1;
 
@@ -748,16 +748,16 @@ contract FountainV1 is IFountainV1 {
         MoneyPool storage _mp = mps[_mpId];
 
         // Return 0 if there's no surplus.
-        if (!_mp.exists || _mp.target >= _mp.balance) return 0;
+        if (!_mp.exists || _mp.target >= _mp.total) return 0;
 
-        uint256 surplus = _mp.balance.sub(_mp.target);
+        uint256 surplus = _mp.total.sub(_mp.target);
 
         // Calculate their share of the sustainment for the the given sustainer.
         // allocate a proportional share of the surplus, overwriting any previous value.
-        uint256 _balanceProportion =
-            _mp.sustainments[_sustainer].div(_mp.balance);
+        uint256 _proportionOfTotal =
+            _mp.sustainments[_sustainer].div(_mp.total);
 
-        return surplus.mul(_balanceProportion);
+        return surplus.mul(_proportionOfTotal);
     }
 
     /// @dev The currently active Money pool for an owner.

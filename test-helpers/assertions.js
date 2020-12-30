@@ -128,7 +128,7 @@ exports.assertBalance = async (
         from: from || address
       }
     )
-  ).balance.toNumber();
+  ).total.toNumber();
   assert.equal(currentSustainment, amount, message);
 };
 
