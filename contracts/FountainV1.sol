@@ -65,9 +65,6 @@ contract FountainV1 is IFountainV1 {
         address[] sustainers;
         // The amount each address has contributed to the sustaining of this Money pool.
         mapping(address => uint256) sustainments;
-        // The amount that will be redistributed to each address as a
-        // consequence of abundant sustainment of this Money pool once it expires.
-        mapping(address => uint256) redistributionTracker;
         // The Money pool's version.
         uint8 version;
     }
@@ -675,8 +672,9 @@ contract FountainV1 is IFountainV1 {
         // redistributed.
         while (_mpId > 0 && !_mp.hasRedistributed[_sustainer]) {
             if (_state(_mpId) == MpState.Redistributing) {
-                _updateTrackedRedistribution(_mpId, _sustainer);
-                _amount = _amount.add(_mp.redistributionTracker[_sustainer]);
+                _amount = _amount.add(
+                    _trackedRedistribution(_mpId, _sustainer)
+                );
                 _mp.hasRedistributed[_sustainer] = true;
             }
             _mpId = previousMpIds[_mpId];
@@ -684,22 +682,6 @@ contract FountainV1 is IFountainV1 {
         }
 
         return _amount;
-    }
-
-    /// @dev Proportionally allocate the specified amount to the contributors of the specified Money pool,
-    /// @dev meaning each sustainer will receive a portion of the specified amount equivalent to the portion of the total
-    /// @dev amount contributed to the sustainment of the Money pool that they are responsible for.
-    /// @param _mpId The ID of the Money pool to update.
-    function _updateTrackedRedistribution(uint256 _mpId, address _sustainer)
-        private
-    {
-        MoneyPool storage _mp = mps[_mpId];
-
-        //Store the updated redistribution in the Money pool.
-        _mp.redistributionTracker[_sustainer] = _trackedRedistribution(
-            _mpId,
-            _sustainer
-        );
     }
 
     /// @dev Returns a copy of the given Money pool with reset sustainments.
