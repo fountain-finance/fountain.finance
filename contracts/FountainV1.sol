@@ -54,7 +54,7 @@ contract FountainV1 is IFountainV1 {
         uint256 balance;
         // The time when this Money pool will become active.
         uint256 start;
-        // The number of days until this Money pool's redistribution is added to the redistributionPool.
+        // The number of seconds until this Money pool's surplus is redistributed.
         uint256 duration;
         // Helper to verify this Money pool exists.
         bool exists;
@@ -154,7 +154,7 @@ contract FountainV1 is IFountainV1 {
     /// @return want The token the Money pool wants.
     /// @return target The amount of the want token this Money pool is targeting.
     /// @return start The time when this Money pool started.
-    /// @return duration The duration of this Money pool.
+    /// @return duration The duration of this Money pool measured in seconds.
     /// @return sustainerCount The number of addresses that have sustained this Money pool.
     /// @return balance The balance of the Money pool. Returns 0 if the Money pool isn't owned by the message sender.
     function getMp(uint256 _mpId)
@@ -180,7 +180,7 @@ contract FountainV1 is IFountainV1 {
     /// @return want The token the Money pool wants.
     /// @return target The amount of the want token this Money pool is targeting.
     /// @return start The time when this Money pool started.
-    /// @return duration The duration of this Money pool.
+    /// @return duration The duration of this Money pool measured in seconds.
     /// @return sustainerCount The number of addresses that have sustained this Money pool.
     /// @return balance The balance of the Money pool. Returns 0 if the Money pool isn't owned by the message sender.
     function getUpcomingMp(address _owner)
@@ -206,7 +206,7 @@ contract FountainV1 is IFountainV1 {
     /// @return want The token the Money pool wants.
     /// @return target The amount of the want token this Money pool is targeting.
     /// @return start The time when this Money pool started.
-    /// @return duration The duration of this Money pool.
+    /// @return duration The duration of this Money pool measured in seconds.
     /// @return sustainerCount The number of addresses that have sustained this Money pool.
     /// @return balance The balance of the Money pool. Returns 0 if the Money pool isn't owned by the message sender.
     function getActiveMp(address _owner)
@@ -312,7 +312,7 @@ contract FountainV1 is IFountainV1 {
     /// @dev Configures the sustainability target and duration of the sender's current Money pool if it hasn't yet received sustainments, or
     /// @dev sets the properties of the Money pool that will take effect once the current Money pool expires.
     /// @param _target The sustainability target to set.
-    /// @param _duration The duration to set.
+    /// @param _duration The duration to set, measured in seconds.
     /// @param _want The token that the Money pool wants.
     /// @return mpId The ID of the Money pool that was successfully configured.
     function configureMp(
@@ -545,7 +545,7 @@ contract FountainV1 is IFountainV1 {
     /// @return want The token the Money pool wants.
     /// @return target The amount of the want token this Money pool is targeting.
     /// @return start The time when this Money pool started.
-    /// @return duration The duration of this Money pool.
+    /// @return duration The duration of this Money pool, measured in seconds.
     /// @return sustainerCount The number of addresses that have sustained this Money pool.
     /// @return balance The balance of the Money pool.
     function _mpProperties(uint256 _mpId)
@@ -822,7 +822,7 @@ contract FountainV1 is IFountainV1 {
     /// @param _mp The Money pool to check.
     /// @return hasExpired The boolean result.
     function _hasMpExpired(MoneyPool memory _mp) private view returns (bool) {
-        return now > _mp.start.add(_mp.duration.mul(1 days));
+        return now > _mp.start.add(_mp.duration);
     }
 
     /// @dev Returns the date that is the nearest multiple of duration from oldEnd.
