@@ -226,18 +226,6 @@ contract FountainV1 is IFountainV1 {
         return _mpProperties(_activeMpId(_owner));
     }
 
-    /// @dev The ID of the Money pool that's next up for an owner.
-    /// @param _owner The owner of the Money pool being looked for.
-    /// @return id The ID of the upcoming Money pool.
-    function getUpcomingMpId(address _owner)
-        external
-        view
-        override
-        returns (uint256)
-    {
-        return _upcomingMpId(_owner);
-    }
-
     /// @dev The amount of sustainments accessible.
     /// @param owner The owner to get the amount for.
     /// @return amount The amount.
@@ -276,18 +264,6 @@ contract FountainV1 is IFountainV1 {
         returns (uint256)
     {
         return _trackedRedistribution(_mpId, _sustainer);
-    }
-
-    /// @dev The amount of redistribution accessible.
-    /// @param sustainer The sustainer to get the amount for.
-    /// @return amount The amount.
-    function getRedistributionBalance(address sustainer)
-        external
-        view
-        override
-        returns (uint256)
-    {
-        return redistributionPool[sustainer];
     }
 
     // --- external transactions --- //
