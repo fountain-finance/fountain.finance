@@ -455,23 +455,8 @@ contract FountainV1 is IFountainV1 {
             "Fountain::sustain: Money pool owner not found"
         );
 
-        bool _wasInactive = _currentMp.total == 0;
-
         // Save if the message sender is contributing to this Money pool for the first time.
         bool _isNewSustainer = _currentMp.sustainments[_beneficiary] == 0;
-
-        // The amount that should be reserved for the sustainability of the Money pool.
-        // If the Money pool is already sustainable, set to 0.
-        // If the Money pool is not yet sustainable even with the amount, set to the amount.
-        // Otherwise set to the portion of the amount it'll take for sustainability to be reached
-        uint256 _sustainabilityAmount;
-        if (_currentMp.total.add(_amount) <= _currentMp.target) {
-            _sustainabilityAmount = _amount;
-        } else if (_currentMp.total >= _currentMp.target) {
-            _sustainabilityAmount = 0;
-        } else {
-            _sustainabilityAmount = _currentMp.target.sub(_currentMp.total);
-        }
 
         // TODO: Not working.`Returned error: VM Exception while processing transaction: revert`
         //https://ethereum.stackexchange.com/questions/60028/testing-transfer-of-tokens-with-truffle
@@ -481,6 +466,14 @@ contract FountainV1 is IFountainV1 {
             _currentMp.want.transferFrom(msg.sender, address(this), _amount),
             "Fountain::sustain: ERC20 transfer failed"
         );
+
+        // Get the amount that should be allocated toward the Money pool's sustainability.
+        uint256 _sustainabilityAmount =
+            _getSustainabilityAmount(
+                _currentMp.total,
+                _currentMp.target,
+                _amount
+            );
 
         // Increment the funds that can be collected from sustainability.
         sustainabilityPool[_owner] = sustainabilityPool[_owner].add(
@@ -514,7 +507,7 @@ contract FountainV1 is IFountainV1 {
             _amount
         );
 
-        if (_wasInactive)
+        if (_isNewSustainer && _currentMp.sustainers.length == 1)
             // Emit an event since since is the first sustainment being made towards this Money pool.
             // NOTE: will emitting this event make the first sustainment of a MP significantly more costly in gas?
             emit ActivateMp(
@@ -816,6 +809,24 @@ contract FountainV1 is IFountainV1 {
     /// @return hasExpired The boolean result.
     function _hasMpExpired(MoneyPool memory _mp) private view returns (bool) {
         return now > _mp.start.add(_mp.duration);
+    }
+
+    /// @dev The amount that should be reserved for the sustainability of the Money pool.
+    /// @dev If the Money pool is already sustainable, return 0.
+    /// @dev If the Money pool is not yet sustainable even with the amount, return the amount.
+    /// @dev Otherwise return the portion of the amount it'll take for sustainability to be reached
+    /// @param _total The total amount currently in the Money pool.
+    /// @param _target The Money pool's target.
+    /// @param _newAmount The amount that is being added to the Money pool.
+    /// @return The portion of the new amount that should go towards the Money pool's sustainability.
+    function _getSustainabilityAmount(
+        uint256 _total,
+        uint256 _target,
+        uint256 _newAmount
+    ) private pure returns (uint256) {
+        if (_total.add(_newAmount) <= _target) return _newAmount;
+        else if (_total >= _target) return 0;
+        else return _target.sub(_total);
     }
 
     /// @dev Returns the date that is the nearest multiple of duration from oldEnd.
