@@ -14,7 +14,6 @@ const {
   assertSustainmentAmount,
   assertRedistributionTrackerAmount,
   assertSustainabilityPoolAmount,
-  assertRedistributionPoolAmount,
   assertSustainedAddresses,
 } = require("../test-helpers/assertions.js");
 
@@ -282,12 +281,6 @@ contract("Fountain", ([owner, creator, sustainer, beneficiary]) => {
           creator,
           scenario.expectedSustainabilityPoolAmount,
           "Invalid sustainabilityPool amount"
-        );
-        await assertRedistributionPoolAmount(
-          fountain,
-          creator,
-          scenario.expectedRedistributionPoolAmount,
-          "Invalid redistributionPool amount"
         );
         await assertSustainedAddresses(
           fountain,
