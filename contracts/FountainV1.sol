@@ -263,9 +263,6 @@ contract FountainV1 is IFountainV1 {
         override
         returns (uint256)
     {
-        //TODO check with Austin memory/storage.
-        MoneyPool memory _mp = mps[_mpId];
-        require(_mp.exists, "Fountain::getSustainment: Money pool not found");
         return mps[_mpId].sustainments[_sustainer];
     }
 
@@ -414,19 +411,13 @@ contract FountainV1 is IFountainV1 {
             "Fountain::sustain: The sustainment amount should be positive"
         );
 
-        // Find the Money pool that this sustainment is going to.
+        // Find the Money pool that this sustainment should go to.
         uint256 _mpId = _mpIdToSustain(_owner);
         MoneyPool storage _mp = mps[_mpId];
 
-        require(_mp.exists, "Fountain::sustain: Money pool owner not found");
-
         bool _wasEmpty = _mp.total == 0;
 
-        // TODO: Not working.`Returned error: VM Exception while processing transaction: revert`
-        //https://ethereum.stackexchange.com/questions/60028/testing-transfer-of-tokens-with-truffle
-        // Got it working in tests using MockContract, but need to verify it works in testnet.
-        // Move the full sustainment amount to this address.
-        _mp.want.transferFrom(msg.sender, address(this), _amount);
+        _mp.want.safeTransferFrom(msg.sender, address(this), _amount);
 
         // Increment the sustainments to the Money pool made by the message sender.
         _mp.sustainments[_beneficiary] = _mp.sustainments[_beneficiary].add(
@@ -447,7 +438,6 @@ contract FountainV1 is IFountainV1 {
 
         if (_wasEmpty)
             // Emit an event since since is the first sustainment being made towards this Money pool.
-            // NOTE: will emitting this event make the first sustainment of a MP significantly more costly in gas?
             emit ActivateMp(
                 mpCount,
                 _mp.owner,
@@ -514,8 +504,8 @@ contract FountainV1 is IFountainV1 {
 
     /// @dev The sustainability of a Money pool cannot be updated if there have been sustainments made to it.
     /// @param _owner The address who owns the Money pool to look for.
-    /// @return id The resulting ID.
-    function _mpIdToConfigure(address _owner) private returns (uint256) {
+    /// @return id The resulting Money pool's id.
+    function _mpIdToConfigure(address _owner) private returns (uint256 id) {
         // Allow active moneyPool to be updated if it has no sustainments
         uint256 _mpId = _activeMpId(_owner);
         if (_mpId != 0 && mps[_mpId].total == 0) return _mpId;
@@ -529,7 +519,7 @@ contract FountainV1 is IFountainV1 {
 
         if (_mpId != 0) return _createMpFromId(_mpId, now);
 
-        _mpId = _initMpId(_owner);
+        _mpId = _initMp(_owner);
         MoneyPool storage _mp = mps[_mpId];
         _mp.start = now;
 
@@ -538,7 +528,7 @@ contract FountainV1 is IFountainV1 {
 
     /// @dev Only active Money pools can be sustained.
     /// @param _owner The address who owns the Money pool to look for.
-    /// @return id The resulting ID.
+    /// @return id The resulting Money pool's id.
     function _mpIdToSustain(address _owner) private returns (uint256) {
         // Check if there is an active moneyPool
         uint256 _mpId = _activeMpId(_owner);
@@ -553,7 +543,6 @@ contract FountainV1 is IFountainV1 {
 
         require(_mpId > 0, "Fountain::mpIdToSustain: Money pool not found");
 
-        // TODO check memory with Austin
         MoneyPool memory _latestMp = mps[_mpId];
         // Use a start date that's a multiple of the duration.
         // This creates the effect that there have been scheduled Money pools ever since the `latest`, even if `latest` is a long time in the past.
@@ -651,42 +640,28 @@ contract FountainV1 is IFountainV1 {
     /// @dev Returns a copy of the given Money pool with reset sustainments.
     /// @param _baseMpId The ID of the Money pool to base the new Money pool on.
     /// @param _start The start date to use for the new Money pool.
-    /// @return newMpId The new Money pool's ID.
+    /// @return id The new Money pool's id.
     function _createMpFromId(uint256 _baseMpId, uint256 _start)
         private
         returns (uint256)
     {
-        MoneyPool storage _currentMp = mps[_baseMpId];
-        require(
-            _currentMp.exists,
-            "Fountain::createMpFromId: Invalid Money pool"
-        );
+        MoneyPool memory _baseMp = mps[_baseMpId];
+        uint256 _mpId = _initMp(_baseMp.owner);
+        MoneyPool storage _mp = mps[_mpId];
 
-        uint256 id = _initMpId(_currentMp.owner);
-        // Must create structs that have mappings using this approach to avoid
-        // the RHS creating a memory-struct that contains a mapping.
-        // See https://ethereum.stackexchange.com/a/72310
-        MoneyPool storage _mp = mps[id];
-        _mp.target = _currentMp.target;
+        _mp.target = _baseMp.target;
         _mp.start = _start;
-        _mp.duration = _currentMp.duration;
-        _mp.want = _currentMp.want;
+        _mp.duration = _baseMp.duration;
+        _mp.want = _baseMp.want;
 
-        previousMpIds[id] = _baseMpId;
-
-        latestMpIds[_currentMp.owner] = mpCount;
-
-        return mpCount;
+        return _mpId;
     }
 
     /// @notice Initializes a Money pool to be sustained for the sending address.
     /// @param _owner The owner of the money pool being initialized.
     /// @return id The initialized Money pool's ID.
-    function _initMpId(address _owner) private returns (uint256) {
+    function _initMp(address _owner) private returns (uint256) {
         mpCount++;
-        // Must create structs that have mappings using this approach to avoid
-        // the RHS creating a memory-struct that contains a mapping.
-        // See https://ethereum.stackexchange.com/a/72310
         MoneyPool storage _newMp = mps[mpCount];
         _newMp.owner = _owner;
         _newMp.total = 0;
@@ -695,7 +670,6 @@ contract FountainV1 is IFountainV1 {
         _newMp.version = 1;
 
         previousMpIds[mpCount] = latestMpIds[_owner];
-
         latestMpIds[_owner] = mpCount;
 
         return mpCount;
@@ -756,7 +730,6 @@ contract FountainV1 is IFountainV1 {
     /// @dev The state the Money pool for the given ID is in.
     /// @param _mpId The ID of the Money pool to get the state of.
     /// @return state The state.
-    /// TODO check with Austin.
     function _state(uint256 _mpId) private view returns (MpState) {
         require(
             mpCount >= _mpId && _mpId > 0,
