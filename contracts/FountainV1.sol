@@ -30,6 +30,7 @@ The basin of the Fountain should always be the sustainers of projects.
 
 */
 
+/// @notice The contract managing the state of all Money pools.
 contract FountainV1 is IFountainV1 {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
@@ -42,9 +43,6 @@ contract FountainV1 is IFountainV1 {
     struct MoneyPool {
         // The address who defined this Money pool and who has access to its sustainments.
         address owner;
-        // // The addresses who own Money pools that this Money pool depends on.
-        // // Surplus from this Money pool will first go towards the sustainability of dependent's current MPs.
-        // address[] dependencies;
         // The token that this Money pool can be funded with.
         IERC20 want;
         // The amount that represents sustainability for this Money pool.
@@ -67,38 +65,27 @@ contract FountainV1 is IFountainV1 {
         uint8 version;
     }
 
-    // Wrap the sustain transaction in a lock to prevent reentrency.
-    uint8 private sustainUnlocked = 1;
-
+    // Wrap the sustain and collect transactions in unique locks to prevent reentrency.
+    uint8 private lock1 = 1;
+    uint8 private lock2 = 1;
+    uint8 private lock3 = 1;
     modifier lockSustain() {
-        require(sustainUnlocked == 1, "Fountain: sustainment locked");
-        sustainUnlocked = 0;
+        require(lock1 == 1, "Fountain: sustainment locked");
+        lock1 = 0;
         _;
-        sustainUnlocked = 1;
+        lock1 = 1;
     }
-
-    // Wrap the collect redistribution transaction in a lock to prevent reentrency.
-    uint8 private collectRedistributionUnlocked = 1;
     modifier lockCollectRedistribution() {
-        require(
-            collectRedistributionUnlocked == 1,
-            "Fountain: collect redistribution locked"
-        );
-        collectRedistributionUnlocked = 0;
+        require(lock2 == 1, "Fountain: collect redistribution locked");
+        lock2 = 0;
         _;
-        collectRedistributionUnlocked = 1;
+        lock2 = 1;
     }
-
-    // Wrap the collect sustainments transaction in a lock to prevent reentrency.
-    uint8 private collectSustainmentUnlocked = 1;
     modifier lockCollectSustainment() {
-        require(
-            collectRedistributionUnlocked == 1,
-            "Fountain: collect sustainment locked"
-        );
-        collectSustainmentUnlocked = 0;
+        require(lock3 == 1, "Fountain: collect sustainment locked");
+        lock3 = 0;
         _;
-        collectSustainmentUnlocked = 1;
+        lock3 = 1;
     }
 
     // --- private properties --- //
@@ -106,12 +93,11 @@ contract FountainV1 is IFountainV1 {
     // The official record of all Money pools ever created
     mapping(uint256 => MoneyPool) private mps;
 
-    // List of addresses sustained by each sustainer
-    mapping(address => address[]) private sustainedAddresses;
+    // List of owners sustained by each sustainer
+    mapping(address => address[]) private sustainedOwners;
 
-    // Map of whether or not an address has sustained another address.
-    mapping(address => mapping(address => bool))
-        private sustainedAddressTracker;
+    // Map of whether or not an address has sustained another owner.
+    mapping(address => mapping(address => bool)) private sustainedOwnerTracker;
 
     // --- public properties --- //
 
@@ -346,7 +332,7 @@ contract FountainV1 is IFountainV1 {
         // Iterate over all of sender's sustained addresses to make sure
         // redistribution has completed for all redistributable Money pools
         uint256 _amount =
-            _redistributeAmount(msg.sender, sustainedAddresses[msg.sender]);
+            _redistributeAmount(msg.sender, sustainedOwners[msg.sender]);
 
         _performCollectRedistributions(msg.sender, _amount);
         return _amount;
@@ -415,8 +401,6 @@ contract FountainV1 is IFountainV1 {
         uint256 _mpId = _mpIdToSustain(_owner);
         MoneyPool storage _mp = mps[_mpId];
 
-        bool _wasEmpty = _mp.total == 0;
-
         _mp.want.safeTransferFrom(msg.sender, address(this), _amount);
 
         // Increment the sustainments to the Money pool made by the message sender.
@@ -424,19 +408,7 @@ contract FountainV1 is IFountainV1 {
             _amount
         );
 
-        // Increment the total amount contributed to the sustainment of the Money pool.
-        _mp.total = _mp.total.add(_amount);
-
-        // Add this address to the sustainer's list of sustained addresses
-        if (sustainedAddressTracker[_beneficiary][_owner] == false) {
-            sustainedAddresses[_beneficiary].push(_owner);
-            sustainedAddressTracker[_beneficiary][_owner] == true;
-        }
-
-        // Emit events.
-        emit SustainMp(_mpId, _mp.owner, _beneficiary, msg.sender, _amount);
-
-        if (_wasEmpty)
+        if (_mp.total == 0)
             // Emit an event since since is the first sustainment being made towards this Money pool.
             emit ActivateMp(
                 mpCount,
@@ -446,6 +418,17 @@ contract FountainV1 is IFountainV1 {
                 _mp.want
             );
 
+        // Increment the total amount contributed to the sustainment of the Money pool.
+        _mp.total = _mp.total.add(_amount);
+
+        // Add this address to the sustainer's list of sustained addresses
+        if (sustainedOwnerTracker[_beneficiary][msg.sender] == false) {
+            sustainedOwners[_beneficiary].push(msg.sender);
+            sustainedOwnerTracker[_beneficiary][msg.sender] == true;
+        }
+
+        // Emit events.
+        emit SustainMp(_mpId, _mp.owner, _beneficiary, msg.sender, _amount);
         return _mpId;
     }
 
