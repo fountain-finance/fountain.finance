@@ -100,11 +100,11 @@ interface IFountainV1 {
 
     function collectRedistributions() external returns (uint256 amount);
 
-    function collectRedistributionsFromAddress(address _from)
+    function collectRedistributions(address _owner)
         external
         returns (uint256 amount);
 
-    function collectRedistributionsFromAddresses(address[] calldata _from)
+    function collectRedistributions(address[] calldata _owner)
         external
         returns (uint256 amount);
 
