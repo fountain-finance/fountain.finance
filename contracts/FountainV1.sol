@@ -57,9 +57,9 @@ contract FountainV1 is IFountainV1 {
         uint256 tapped;
         // Helper to verify this Money pool exists.
         bool exists;
-        // Indicates if surplus funds have been redistributed for each sustainer address
+        // Indicates if surplus funds have been redistributed for each sustainer address.
         mapping(address => bool) hasRedistributed;
-        // The amount each address has contributed to the sustaining of this Money pool.
+        // The amount each address has contributed to sustaining this Money pool.
         mapping(address => uint256) sustainments;
         // The Money pool's version.
         uint8 version;
