@@ -28,15 +28,6 @@ exports.assertSustainabilityTarget = async (
   assert.equal(currentTarget, target, message);
 };
 
-exports.assertSustainerCount = async (instance, address, count, message) => {
-  const sustainerCount = (
-    await instance.getMp(
-      (await instance.latestMpIds(address)).toNumber()
-    )
-  ).sustainerCount;
-  assert.equal(sustainerCount, count, message);
-};
-
 exports.assertInitializeMoneyPoolEvent = async (
   tx,
   instance,

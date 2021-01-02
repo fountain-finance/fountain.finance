@@ -356,29 +356,29 @@ contract FountainV1 is IFountainV1 {
     }
 
     /// @dev A message sender can collect what's been redistributed to it by a specific Money pool once it's expired.
-    /// @param _from The Money pool to collect from.
+    /// @param _owner The Money pool owner to collect from.
     /// @return success If the collecting was a success.
-    function collectRedistributionsFromAddress(address _from)
+    function collectRedistributions(address _owner)
         external
         override
         lockCollectRedistribution
         returns (uint256)
     {
-        uint256 _amount = _redistributeAmount(msg.sender, _from);
+        uint256 _amount = _redistributeAmount(msg.sender, _owner);
         _performCollectRedistributions(msg.sender, _amount);
         return _amount;
     }
 
     /// @dev A message sender can collect what's been redistributed to it by specific Money pools once they have expired.
-    /// @param _from The Money pools to collect from.
+    /// @param _owners The Money pools owners to collect from.
     /// @return success If the collecting was a success.
-    function collectRedistributionsFromAddresses(address[] calldata _from)
+    function collectRedistributions(address[] calldata _owners)
         external
         override
         lockCollectRedistribution
         returns (uint256)
     {
-        uint256 _amount = _redistributeAmount(msg.sender, _from);
+        uint256 _amount = _redistributeAmount(msg.sender, _owners);
         _performCollectRedistributions(msg.sender, _amount);
         return _amount;
     }
@@ -420,7 +420,7 @@ contract FountainV1 is IFountainV1 {
 
         require(_mp.exists, "Fountain::sustain: Money pool owner not found");
 
-        MpState _originalState = _state(_mpId);
+        bool _wasEmpty = _mp.total == 0;
 
         // TODO: Not working.`Returned error: VM Exception while processing transaction: revert`
         //https://ethereum.stackexchange.com/questions/60028/testing-transfer-of-tokens-with-truffle
@@ -445,10 +445,7 @@ contract FountainV1 is IFountainV1 {
         // Emit events.
         emit SustainMp(_mpId, _mp.owner, _beneficiary, msg.sender, _amount);
 
-        if (
-            _originalState == MpState.Upcoming &&
-            _state(_mpId) == MpState.Active
-        )
+        if (_wasEmpty)
             // Emit an event since since is the first sustainment being made towards this Money pool.
             // NOTE: will emitting this event make the first sustainment of a MP significantly more costly in gas?
             emit ActivateMp(

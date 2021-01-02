@@ -5,7 +5,6 @@ const {
   assertMoneyPoolCount,
   assertDuration,
   assertSustainabilityTarget,
-  assertSustainerCount,
   assertInitializeMoneyPoolEvent,
   assertActivateMoneyPoolEvent,
   assertConfigureMoneyPoolEvent,
@@ -184,7 +183,6 @@ contract("Fountain", ([owner, creator, sustainer, beneficiary]) => {
         expectedRedistributionTrackerAmount: 0,
         expectedSustainabilityPoolAmount: 10,
         expectedRedistributionPoolAmount: 0,
-        expectedSustainerCount: 1
       },
       {
         description: "sustainment equal to target",
@@ -195,7 +193,6 @@ contract("Fountain", ([owner, creator, sustainer, beneficiary]) => {
         expectedRedistributionTrackerAmount: 0,
         expectedSustainabilityPoolAmount: 100,
         expectedRedistributionPoolAmount: 0,
-        expectedSustainerCount: 1
       },
       {
         description: "sustainment greater than target",
@@ -206,7 +203,6 @@ contract("Fountain", ([owner, creator, sustainer, beneficiary]) => {
         expectedRedistributionTrackerAmount: 50,
         expectedSustainabilityPoolAmount: 100,
         expectedRedistributionPoolAmount: 0, // Redistribution hasn't triggered yet
-        expectedSustainerCount: 1
       },
       {
         description: "beneficiary different from message sender",
@@ -217,7 +213,6 @@ contract("Fountain", ([owner, creator, sustainer, beneficiary]) => {
         expectedRedistributionTrackerAmount: 50,
         expectedSustainabilityPoolAmount: 100,
         expectedRedistributionPoolAmount: 0, // Redistribution hasn't triggered yet
-        expectedSustainerCount: 1
       },
     ];
 
@@ -250,12 +245,6 @@ contract("Fountain", ([owner, creator, sustainer, beneficiary]) => {
           creator,
           scenario.expectedCurrentSustainment,
           "Invalid currentSustainment"
-        );
-        await assertSustainerCount(
-          fountain,
-          creator,
-          scenario.expectedSustainerCount,
-          "Invalid sustainerCount"
         );
         await assertSustainmentAmount(
           fountain,
