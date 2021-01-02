@@ -323,7 +323,7 @@ contract FountainV1 is IFountainV1 {
 
     /// @dev A message sender can collect what's been redistributed to it by Money pools once they have expired.
     /// @return amount If the collecting was a success.
-    function collectRedistributions()
+    function collectAllRedistributions()
         external
         override
         lockCollectRedistribution
@@ -341,7 +341,7 @@ contract FountainV1 is IFountainV1 {
     /// @dev A message sender can collect what's been redistributed to it by a specific Money pool once it's expired.
     /// @param _owner The Money pool owner to collect from.
     /// @return success If the collecting was a success.
-    function collectRedistributions(address _owner)
+    function collectRedistributionsFromOwner(address _owner)
         external
         override
         lockCollectRedistribution
@@ -355,7 +355,7 @@ contract FountainV1 is IFountainV1 {
     /// @dev A message sender can collect what's been redistributed to it by specific Money pools once they have expired.
     /// @param _owners The Money pools owners to collect from.
     /// @return success If the collecting was a success.
-    function collectRedistributions(address[] calldata _owners)
+    function collectRedistributionsFromOwners(address[] calldata _owners)
         external
         override
         lockCollectRedistribution
@@ -366,17 +366,37 @@ contract FountainV1 is IFountainV1 {
         return _amount;
     }
 
-    /// @dev A message sender can collect funds that have been used to sustain it's Money pools.
-    /// @return success If the collecting was a success.
-    function collectSustainments()
+    /// @dev A message sender can collect all funds that have been used to sustain it's Money pools.
+    /// @return amount The amount collected.
+    function collectAllSustainments()
         external
         override
         lockCollectSustainment
         returns (uint256)
     {
-        uint256 _amount = _tapAmount(msg.sender);
+        uint256 _amount = _tapAll(msg.sender);
         _performCollectSustainments(msg.sender, _amount);
         return _amount;
+    }
+
+    /// @dev A message sender can collect specific funds that have been used to sustain it's Money pools.
+    /// @param _mpId The ID of the Money pool to tap.
+    /// @param _amount The amount to tap.
+    /// @return success If the collecting was a success.
+    function collectSustainments(uint256 _mpId, uint256 _amount)
+        external
+        override
+        lockCollectSustainment
+        returns (bool)
+    {
+        MoneyPool storage _mp = mps[_mpId];
+        require(
+            _mp.owner == msg.sender,
+            "Fountain::collectSustainments: Money pools can only be tapped by their owner"
+        );
+        _tap(_mp, _amount);
+        _performCollectSustainments(msg.sender, _amount);
+        return true;
     }
 
     // --- private --- //
@@ -471,6 +491,7 @@ contract FountainV1 is IFountainV1 {
     function _performCollectRedistributions(address _sustainer, uint256 _amount)
         private
     {
+        dai.safeIncreaseAllowance(address(this), _amount);
         dai.safeTransferFrom(address(this), _sustainer, _amount);
         emit CollectRedistributions(_sustainer, _amount);
     }
@@ -481,6 +502,7 @@ contract FountainV1 is IFountainV1 {
     function _performCollectSustainments(address _owner, uint256 _amount)
         private
     {
+        dai.safeIncreaseAllowance(address(this), _amount);
         dai.safeTransferFrom(address(this), _owner, _amount);
         emit CollectSustainments(_owner, _amount);
     }
@@ -592,10 +614,10 @@ contract FountainV1 is IFountainV1 {
         return _amount;
     }
 
-    /// @dev Take the amount that should be redistributed to the given sustainer by the given owner's Money pools.
+    /// @dev Take the amount that should be tapped by the owner of a Money pool.
     /// @param _owner The Money pool owner to redistribute from.
-    /// @return _amount The amount to be redistributed.
-    function _tapAmount(address _owner) private returns (uint256) {
+    /// @return _amount The amount to be tapped.
+    function _tapAll(address _owner) private returns (uint256) {
         uint256 _amount = 0;
         uint256 _mpId = latestMpIds[_owner];
         require(
@@ -610,14 +632,26 @@ contract FountainV1 is IFountainV1 {
         // been fully tapped.
         uint256 _mpAmountTappable = _tappableAmount(_mp);
         while (_mpId > 0 && _mpAmountTappable > 0) {
+            _tap(_mp, _mpAmountTappable);
             _amount = _amount.add(_mpAmountTappable);
-            _mp.tapped = _mp.tapped.add(_mpAmountTappable);
             _mpId = previousMpIds[_mpId];
             _mp = mps[_mpId];
             _mpAmountTappable = _tappableAmount(_mp);
         }
 
         return _amount;
+    }
+
+    /// @dev Take the amount that should be redistributed to the given sustainer by the given owner's Money pools.
+    /// @param _mp The Money pool to tap.
+    /// @param _amount The amount to tap.
+    function _tap(MoneyPool storage _mp, uint256 _amount) private {
+        uint256 _mpAmountTappable = _tappableAmount(_mp);
+        require(
+            _mpAmountTappable >= _amount,
+            "Fountain::_tap: Not enough to tap"
+        );
+        _mp.tapped = _mp.tapped.add(_amount);
     }
 
     /// @dev Returns a copy of the given Money pool with reset sustainments.
