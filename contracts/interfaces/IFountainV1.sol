@@ -98,15 +98,19 @@ interface IFountainV1 {
         address _beneficiary
     ) external returns (uint256 mpId);
 
-    function collectRedistributions() external returns (uint256 amount);
+    function collectAllRedistributions() external returns (uint256 amount);
 
-    function collectRedistributions(address _owner)
+    function collectRedistributionsFromOwner(address _owner)
         external
         returns (uint256 amount);
 
-    function collectRedistributions(address[] calldata _owner)
+    function collectRedistributionsFromOwners(address[] calldata _owner)
         external
         returns (uint256 amount);
 
-    function collectSustainments() external returns (uint256 amount);
+    function collectAllSustainments() external returns (uint256 amount);
+
+    function collectSustainments(uint256 _mpId, uint256 _amount)
+        external
+        returns (bool success);
 }
