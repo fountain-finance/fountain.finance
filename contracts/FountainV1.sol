@@ -35,8 +35,7 @@ contract FountainV1 is IFountainV1 {
     using SafeERC20 for IERC20;
 
     /// @notice Possible states that a Money pool may be in
-    /// @dev immutable once the Money pool receives some sustainment.
-    /// @dev entirely mutable until they become active.
+    /// @dev Money pool's are immutable once the Money pool is active.
     enum MpState {Upcoming, Active, Redistributing}
 
     /// @notice The Money pool structure represents a project stewarded by an address, and accounts for which addresses have helped sustain the project.
