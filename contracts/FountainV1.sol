@@ -68,7 +68,7 @@ contract FountainV1 is IFountainV1 {
     }
 
     // Wrap the sustain transaction in a lock to prevent reentrency.
-    uint256 private sustainUnlocked = 1;
+    uint8 private sustainUnlocked = 1;
 
     modifier lockSustain() {
         require(sustainUnlocked == 1, "Fountain: sustainment locked");
@@ -78,7 +78,7 @@ contract FountainV1 is IFountainV1 {
     }
 
     // Wrap the collect redistribution transaction in a lock to prevent reentrency.
-    uint256 private collectRedistributionUnlocked = 1;
+    uint8 private collectRedistributionUnlocked = 1;
     modifier lockCollectRedistribution() {
         require(
             collectRedistributionUnlocked == 1,
@@ -90,7 +90,7 @@ contract FountainV1 is IFountainV1 {
     }
 
     // Wrap the collect sustainments transaction in a lock to prevent reentrency.
-    uint256 private collectSustainmentUnlocked = 1;
+    uint8 private collectSustainmentUnlocked = 1;
     modifier lockCollectSustainment() {
         require(
             collectRedistributionUnlocked == 1,
