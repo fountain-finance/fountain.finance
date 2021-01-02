@@ -632,7 +632,7 @@ contract FountainV1 is IFountainV1 {
         // been fully tapped.
         uint256 _mpAmountTappable = _tappableAmount(_mp);
         while (_mpId > 0 && _mpAmountTappable > 0) {
-            _tap(_mp, _mpAmountTappable);
+            _mp.tapped = _mp.tapped.add(_mpAmountTappable);
             _amount = _amount.add(_mpAmountTappable);
             _mpId = previousMpIds[_mpId];
             _mp = mps[_mpId];
@@ -667,9 +667,10 @@ contract FountainV1 is IFountainV1 {
         MoneyPool storage _mp = mps[_mpId];
 
         _mp.target = _baseMp.target;
-        _mp.start = _start;
         _mp.duration = _baseMp.duration;
         _mp.want = _baseMp.want;
+
+        _mp.start = _start;
 
         return _mpId;
     }
