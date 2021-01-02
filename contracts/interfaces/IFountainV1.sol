@@ -10,30 +10,35 @@ interface IFountainV1 {
 
     function mpCount() external view returns (uint256);
 
-    event InitializeMp(uint256 indexed id, address indexed owner);
+    event InitializeMp(uint256 indexed mpId, address indexed owner);
     event ActivateMp(
-        uint256 indexed id,
+        uint256 indexed mpId,
         address indexed owner,
         uint256 indexed target,
         uint256 duration,
         IERC20 want
     );
     event ConfigureMp(
-        uint256 indexed id,
+        uint256 indexed mpId,
         address indexed owner,
         uint256 indexed target,
         uint256 duration,
         IERC20 want
     );
     event SustainMp(
-        uint256 indexed id,
+        uint256 indexed mpId,
         address indexed owner,
         address indexed beneficiary,
         address sustainer,
         uint256 amount
     );
     event CollectRedistributions(address indexed sustainer, uint256 amount);
-    event CollectSustainments(address indexed owner, uint256 amount);
+    event CollectSustainments(
+        uint256 indexed mpId,
+        address indexed owner,
+        uint256 amount,
+        address want
+    );
 
     function getMp(uint256 _mpId)
         external
@@ -107,8 +112,6 @@ interface IFountainV1 {
     function collectRedistributionsFromOwners(address[] calldata _owner)
         external
         returns (uint256 amount);
-
-    function collectAllSustainments() external returns (uint256 amount);
 
     function collectSustainments(uint256 _mpId, uint256 _amount)
         external

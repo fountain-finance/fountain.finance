@@ -117,11 +117,11 @@ contract FountainV1 is IFountainV1 {
     // --- events --- //
 
     /// This event should trigger when a Money pool is first initialized.
-    event InitializeMp(uint256 indexed id, address indexed owner);
+    event InitializeMp(uint256 indexed mpId, address indexed owner);
 
     // This event should trigger when a Money pool's state changes to active.
     event ActivateMp(
-        uint256 indexed id,
+        uint256 indexed mpId,
         address indexed owner,
         uint256 indexed target,
         uint256 duration,
@@ -130,7 +130,7 @@ contract FountainV1 is IFountainV1 {
 
     /// This event should trigger when a Money pool is configured.
     event ConfigureMp(
-        uint256 indexed id,
+        uint256 indexed mpId,
         address indexed owner,
         uint256 indexed target,
         uint256 duration,
@@ -139,7 +139,7 @@ contract FountainV1 is IFountainV1 {
 
     /// This event should trigger when a Money pool is sustained.
     event SustainMp(
-        uint256 indexed id,
+        uint256 indexed mpId,
         address indexed owner,
         address indexed beneficiary,
         address sustainer,
@@ -150,7 +150,12 @@ contract FountainV1 is IFountainV1 {
     event CollectRedistributions(address indexed sustainer, uint256 amount);
 
     /// This event should trigger when sustainments are collected.
-    event CollectSustainments(address indexed owner, uint256 amount);
+    event CollectSustainments(
+        uint256 indexed mpId,
+        address indexed owner,
+        uint256 amount,
+        IERC20 want
+    );
 
     // --- external views --- //
 
@@ -288,10 +293,6 @@ contract FountainV1 is IFountainV1 {
             "Fountain::configureMp: A Money Pool must be at least one day long"
         );
         require(
-            _want == dai,
-            "Fountain::configureMp: For now, a Money Pool can only be funded with dai"
-        );
-        require(
             _target > 0,
             "Fountain::configureMp: A Money Pool target must be a positive number"
         );
@@ -366,19 +367,6 @@ contract FountainV1 is IFountainV1 {
         return _amount;
     }
 
-    /// @dev A message sender can collect all funds that have been used to sustain it's Money pools.
-    /// @return amount The amount collected.
-    function collectAllSustainments()
-        external
-        override
-        lockCollectSustainment
-        returns (uint256)
-    {
-        uint256 _amount = _tapAll(msg.sender);
-        _performCollectSustainments(msg.sender, _amount);
-        return _amount;
-    }
-
     /// @dev A message sender can collect specific funds that have been used to sustain it's Money pools.
     /// @param _mpId The ID of the Money pool to tap.
     /// @param _amount The amount to tap.
@@ -395,7 +383,11 @@ contract FountainV1 is IFountainV1 {
             "Fountain::collectSustainments: Money pools can only be tapped by their owner"
         );
         _tap(_mp, _amount);
-        _performCollectSustainments(msg.sender, _amount);
+
+        _mp.want.safeIncreaseAllowance(address(this), _amount);
+        _mp.want.safeTransferFrom(address(this), msg.sender, _amount);
+        emit CollectSustainments(_mpId, msg.sender, _amount, _mp.want);
+
         return true;
     }
 
@@ -427,6 +419,9 @@ contract FountainV1 is IFountainV1 {
         _mp.sustainments[_beneficiary] = _mp.sustainments[_beneficiary].add(
             _amount
         );
+
+        //If surplus, buy water.
+        //Mint root(water) and distribute to LPs.
 
         if (_mp.total == 0)
             // Emit an event since since is the first sustainment being made towards this Money pool.
@@ -494,17 +489,6 @@ contract FountainV1 is IFountainV1 {
         dai.safeIncreaseAllowance(address(this), _amount);
         dai.safeTransferFrom(address(this), _sustainer, _amount);
         emit CollectRedistributions(_sustainer, _amount);
-    }
-
-    /// @dev Executes the collection of sustainability funds.
-    /// @param _owner The owner address to deliver the sustainments to.
-    /// @param _amount The amount to collect.
-    function _performCollectSustainments(address _owner, uint256 _amount)
-        private
-    {
-        dai.safeIncreaseAllowance(address(this), _amount);
-        dai.safeTransferFrom(address(this), _owner, _amount);
-        emit CollectSustainments(_owner, _amount);
     }
 
     /// @dev The sustainability of a Money pool cannot be updated if there have been sustainments made to it.
@@ -609,34 +593,6 @@ contract FountainV1 is IFountainV1 {
             }
             _mpId = previousMpIds[_mpId];
             _mp = mps[_mpId];
-        }
-
-        return _amount;
-    }
-
-    /// @dev Take the amount that should be tapped by the owner of a Money pool.
-    /// @param _owner The Money pool owner to redistribute from.
-    /// @return _amount The amount to be tapped.
-    function _tapAll(address _owner) private returns (uint256) {
-        uint256 _amount = 0;
-        uint256 _mpId = latestMpIds[_owner];
-        require(
-            _mpId > 0,
-            "Fountain::_getSustainmentAmount: Money Pool not found"
-        );
-        MoneyPool storage _mp = mps[_mpId];
-
-        // Iterate through all Money pools for this owner address. For each iteration,
-        // if the Money pool has not been fully tapped, proceed to tapping it.
-        // Iterate until a Money pool is found that has already
-        // been fully tapped.
-        uint256 _mpAmountTappable = _tappableAmount(_mp);
-        while (_mpId > 0 && _mpAmountTappable > 0) {
-            _mp.tapped = _mp.tapped.add(_mpAmountTappable);
-            _amount = _amount.add(_mpAmountTappable);
-            _mpId = previousMpIds[_mpId];
-            _mp = mps[_mpId];
-            _mpAmountTappable = _tappableAmount(_mp);
         }
 
         return _amount;

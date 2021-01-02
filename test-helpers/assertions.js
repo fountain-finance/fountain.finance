@@ -37,7 +37,7 @@ exports.assertInitializeMoneyPoolEvent = async (
   const currentCount = (await instance.mpCount()).toString();
   truffleAssert.eventEmitted(tx, "InitializeMp", (ev) => {
     return (
-      ev.id.toString() === currentCount &&
+      ev.mpId.toString() === currentCount &&
       ev.owner === creator
     )
   }, message);
@@ -55,7 +55,7 @@ exports.assertActivateMoneyPoolEvent = async (
   const currentCount = (await instance.mpCount()).toString();
   truffleAssert.eventEmitted(tx, "ActivateMp", (ev) => {
     return (
-      ev.id.toString() === currentCount &&
+      ev.mpId.toString() === currentCount &&
       ev.owner === creator &&
       ev.target.toString() === target.toString() &&
       ev.duration.toString() === duration.toString() &&
@@ -76,7 +76,7 @@ exports.assertConfigureMoneyPoolEvent = async (
   const currentCount = (await instance.mpCount()).toString();
   truffleAssert.eventEmitted(tx, "ConfigureMp", (ev) => {
     return (
-      ev.id.toString() === currentCount &&
+      ev.mpId.toString() === currentCount &&
       ev.owner === creator &&
       ev.target.toString() === target.toString() &&
       ev.duration.toString() === duration.toString() &&
@@ -97,7 +97,7 @@ exports.assertSustainMoneyPoolEvent = async (
   const currentCount = (await instance.mpCount()).toString();
   truffleAssert.eventEmitted(tx, "SustainMp", (ev) => {
     return (
-      ev.id.toString() === currentCount &&
+      ev.mpId.toString() === currentCount &&
       ev.owner === creator &&
       ev.beneficiary === beneficiary &&
       ev.sustainer === sustainer &&
