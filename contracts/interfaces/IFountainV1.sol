@@ -44,7 +44,6 @@ interface IFountainV1 {
             uint256 target,
             uint256 start,
             uint256 duration,
-            uint256 sustainerCount,
             uint256 balance
         );
 
@@ -57,7 +56,6 @@ interface IFountainV1 {
             uint256 target,
             uint256 start,
             uint256 duration,
-            uint256 sustainerCount,
             uint256 balance
         );
 
@@ -70,7 +68,6 @@ interface IFountainV1 {
             uint256 target,
             uint256 start,
             uint256 duration,
-            uint256 sustainerCount,
             uint256 balance
         );
 

@@ -61,9 +61,6 @@ contract FountainV1 is IFountainV1 {
         bool exists;
         // Indicates if surplus funds have been redistributed for each sustainer address
         mapping(address => bool) hasRedistributed;
-        // The addresses who have helped to sustain this Money pool.
-        // NOTE: Using arrays may be bad practice and/or expensive
-        address[] sustainers;
         // The amount each address has contributed to the sustaining of this Money pool.
         mapping(address => uint256) sustainments;
         // The Money pool's version.
@@ -178,7 +175,6 @@ contract FountainV1 is IFountainV1 {
     /// @return target The amount of the want token this Money pool is targeting.
     /// @return start The time when this Money pool started.
     /// @return duration The duration of this Money pool measured in seconds.
-    /// @return sustainerCount The number of addresses that have sustained this Money pool.
     /// @return total The total amount passed through the Money pool. Returns 0 if the Money pool isn't owned by the message sender.
     function getMp(uint256 _mpId)
         external
@@ -190,7 +186,6 @@ contract FountainV1 is IFountainV1 {
             uint256 target,
             uint256 start,
             uint256 duration,
-            uint256 sustainerCount,
             uint256 total
         )
     {
@@ -204,7 +199,6 @@ contract FountainV1 is IFountainV1 {
     /// @return target The amount of the want token this Money pool is targeting.
     /// @return start The time when this Money pool started.
     /// @return duration The duration of this Money pool measured in seconds.
-    /// @return sustainerCount The number of addresses that have sustained this Money pool.
     /// @return total The total amount passed through the Money pool. Returns 0 if the Money pool isn't owned by the message sender.
     function getUpcomingMp(address _owner)
         external
@@ -216,7 +210,6 @@ contract FountainV1 is IFountainV1 {
             uint256 target,
             uint256 start,
             uint256 duration,
-            uint256 sustainerCount,
             uint256 total
         )
     {
@@ -230,7 +223,6 @@ contract FountainV1 is IFountainV1 {
     /// @return target The amount of the want token this Money pool is targeting.
     /// @return start The time when this Money pool started.
     /// @return duration The duration of this Money pool measured in seconds.
-    /// @return sustainerCount The number of addresses that have sustained this Money pool.
     /// @return total The total amount passed through the Money pool. Returns 0 if the Money pool isn't owned by the message sender.
     function getActiveMp(address _owner)
         external
@@ -242,7 +234,6 @@ contract FountainV1 is IFountainV1 {
             uint256 target,
             uint256 start,
             uint256 duration,
-            uint256 sustainerCount,
             uint256 total
         )
     {
@@ -423,34 +414,27 @@ contract FountainV1 is IFountainV1 {
             "Fountain::sustain: The sustainment amount should be positive"
         );
 
+        // Find the Money pool that this sustainment is going to.
         uint256 _mpId = _mpIdToSustain(_owner);
-        MoneyPool storage _currentMp = mps[_mpId];
+        MoneyPool storage _mp = mps[_mpId];
 
-        require(
-            _currentMp.exists,
-            "Fountain::sustain: Money pool owner not found"
-        );
+        require(_mp.exists, "Fountain::sustain: Money pool owner not found");
 
-        // Save if the message sender is contributing to this Money pool for the first time.
-        bool _isNewSustainer = _currentMp.sustainments[_beneficiary] == 0;
+        MpState _originalState = _state(_mpId);
 
         // TODO: Not working.`Returned error: VM Exception while processing transaction: revert`
         //https://ethereum.stackexchange.com/questions/60028/testing-transfer-of-tokens-with-truffle
         // Got it working in tests using MockContract, but need to verify it works in testnet.
         // Move the full sustainment amount to this address.
-        _currentMp.want.transferFrom(msg.sender, address(this), _amount);
+        _mp.want.transferFrom(msg.sender, address(this), _amount);
 
         // Increment the sustainments to the Money pool made by the message sender.
-        _currentMp.sustainments[_beneficiary] = _currentMp.sustainments[
-            _beneficiary
-        ]
-            .add(_amount);
+        _mp.sustainments[_beneficiary] = _mp.sustainments[_beneficiary].add(
+            _amount
+        );
 
         // Increment the total amount contributed to the sustainment of the Money pool.
-        _currentMp.total = _currentMp.total.add(_amount);
-
-        // Add the message sender as a sustainer of the Money pool if this is the first sustainment it's making to it.
-        if (_isNewSustainer) _currentMp.sustainers.push(_beneficiary);
+        _mp.total = _mp.total.add(_amount);
 
         // Add this address to the sustainer's list of sustained addresses
         if (sustainedAddressTracker[_beneficiary][_owner] == false) {
@@ -459,23 +443,20 @@ contract FountainV1 is IFountainV1 {
         }
 
         // Emit events.
-        emit SustainMp(
-            _mpId,
-            _currentMp.owner,
-            _beneficiary,
-            msg.sender,
-            _amount
-        );
+        emit SustainMp(_mpId, _mp.owner, _beneficiary, msg.sender, _amount);
 
-        if (_isNewSustainer && _currentMp.sustainers.length == 1)
+        if (
+            _originalState == MpState.Upcoming &&
+            _state(_mpId) == MpState.Active
+        )
             // Emit an event since since is the first sustainment being made towards this Money pool.
             // NOTE: will emitting this event make the first sustainment of a MP significantly more costly in gas?
             emit ActivateMp(
                 mpCount,
-                _currentMp.owner,
-                _currentMp.target,
-                _currentMp.duration,
-                _currentMp.want
+                _mp.owner,
+                _mp.target,
+                _mp.duration,
+                _mp.want
             );
 
         return _mpId;
@@ -488,7 +469,6 @@ contract FountainV1 is IFountainV1 {
     /// @return target The amount of the want token this Money pool is targeting.
     /// @return start The time when this Money pool started.
     /// @return duration The duration of this Money pool, measured in seconds.
-    /// @return sustainerCount The number of addresses that have sustained this Money pool.
     /// @return total The total amount passed through the Money pool. Returns 0 if the Money pool isn't owned by the message sender.
     function _mpProperties(uint256 _mpId)
         private
@@ -496,7 +476,6 @@ contract FountainV1 is IFountainV1 {
         returns (
             uint256,
             IERC20,
-            uint256,
             uint256,
             uint256,
             uint256,
@@ -512,7 +491,6 @@ contract FountainV1 is IFountainV1 {
             _mp.target,
             _mp.start,
             _mp.duration,
-            _mp.sustainers.length,
             _mp.total
         );
     }
