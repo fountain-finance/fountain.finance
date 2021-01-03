@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.6.0 <0.8.0;
 
-import "../interfaces/IFountainV1.sol";
+import "../interfaces/IFountain.sol";
 
 /// @dev This contract is an example of how you can use Fountain to fund your own project.
 contract YourProject {
-    IFountainV1 fountain;
+    IFountain fountain;
 
     /// @dev Create your Money pool in your constructor.
     constructor(address _fountain, IERC20 _dai) public {
-        fountain = IFountainV1(_fountain);
+        fountain = IFountain(_fountain);
         fountain.configureMp(10000 * (10 ^ 18), 30, _dai);
     }
 
