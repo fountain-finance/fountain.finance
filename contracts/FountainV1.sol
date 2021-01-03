@@ -384,8 +384,7 @@ contract FountainV1 is IFountainV1 {
         );
         _tap(_mp, _amount);
 
-        _mp.want.safeIncreaseAllowance(address(this), _amount);
-        _mp.want.safeTransferFrom(address(this), msg.sender, _amount);
+        _mp.want.safeTransfer(msg.sender, _amount);
         emit CollectSustainments(_mpId, msg.sender, _amount, _mp.want);
 
         return true;
@@ -486,8 +485,7 @@ contract FountainV1 is IFountainV1 {
     function _performCollectRedistributions(address _sustainer, uint256 _amount)
         private
     {
-        dai.safeIncreaseAllowance(address(this), _amount);
-        dai.safeTransferFrom(address(this), _sustainer, _amount);
+        dai.safeTransfer(_sustainer, _amount);
         emit CollectRedistributions(_sustainer, _amount);
     }
 
