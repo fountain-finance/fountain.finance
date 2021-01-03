@@ -5,8 +5,6 @@ const {
   assertMoneyPoolCount,
   assertDuration,
   assertSustainabilityTarget,
-  assertInitializeMoneyPoolEvent,
-  assertActivateMoneyPoolEvent,
   assertConfigureMoneyPoolEvent,
   assertSustainMoneyPoolEvent,
   assertBalance,
@@ -74,12 +72,6 @@ contract("Fountain", ([owner, creator, sustainer, beneficiary]) => {
         fountain,
         1,
         "Only one Money pool should exist"
-      );
-      await assertInitializeMoneyPoolEvent(
-        result, 
-        fountain, 
-        creator, 
-        "Invalid InitializeMp event"
       );
       await assertConfigureMoneyPoolEvent(
         result, 
@@ -230,15 +222,6 @@ contract("Fountain", ([owner, creator, sustainer, beneficiary]) => {
           sustainer, 
           scenario.amount,
           "Invalid SustainMp event"
-        );
-        await assertActivateMoneyPoolEvent(
-          result, 
-          fountain, 
-          creator, 
-          initialTarget, 
-          initialDuration, 
-          erc20Mock.address,
-          "Invalid ActivateMp event"
         );
         await assertBalance(
           fountain,

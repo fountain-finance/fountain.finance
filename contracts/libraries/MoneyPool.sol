@@ -4,8 +4,10 @@ pragma solidity >=0.6.0 <0.8.0;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 
+import "./Math.sol";
+
+/// @notice Logic to manipulate MoneyPool data.
 library MoneyPool {
-    using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
     /// @notice Possible states that a Money pool may be in
@@ -38,44 +40,6 @@ library MoneyPool {
         mapping(address => uint256) sustainments;
         // The Money pool's version.
         uint8 version;
-    }
-
-    // This event should trigger when a Money pool's state changes to active.
-    event Activate(
-        uint256 indexed mpNumber,
-        address indexed owner,
-        uint256 indexed target,
-        uint256 duration,
-        IERC20 want
-    );
-
-    /// This event should trigger when a Money pool is configured.
-    event Configure(
-        uint256 indexed mpNumber,
-        address indexed owner,
-        uint256 indexed target,
-        uint256 duration,
-        IERC20 want
-    );
-
-    /// This event should trigger when a Money pool is sustained.
-    event Sustain(
-        uint256 indexed mpNumber,
-        address indexed owner,
-        address indexed beneficiary,
-        address sustainer,
-        uint256 amount
-    );
-
-    /// @dev The amount of sustainments accessible.
-    /// @param self The Money pool to get the balance for.
-    /// @return amount The amount.
-    function getSustainmentBalance(Data storage self)
-        external
-        view
-        returns (uint256)
-    {
-        return _tappableAmount(self);
     }
 
     /// @dev Initializes a Money pool's parameters.
@@ -113,8 +77,6 @@ library MoneyPool {
         self.target = _target;
         self.duration = _duration;
         self.want = _want;
-
-        emit Configure(self.number, msg.sender, _target, _duration, _want);
     }
 
     /// @dev Contribute a specified amount to the sustainability of the specified address's active Money pool.
@@ -127,44 +89,19 @@ library MoneyPool {
         uint256 _amount,
         address _beneficiary
     ) internal {
-        self.want.safeTransferFrom(msg.sender, address(this), _amount);
-
         // Increment the sustainments to the Money pool made by the message sender.
         self.sustainments[_beneficiary] = self.sustainments[_beneficiary].add(
             _amount
         );
 
-        if (self.total == 0)
-            // Emit an event since since is the first sustainment being made towards this Money pool.
-            emit Activate(
-                self.number,
-                self.owner,
-                self.target,
-                self.duration,
-                self.want
-            );
-
         // Increment the total amount contributed to the sustainment of the Money pool.
         self.total = self.total.add(_amount);
-
-        emit Sustain(
-            self.number,
-            self.owner,
-            _beneficiary,
-            msg.sender,
-            _amount
-        );
     }
 
-    /// @dev Take the amount that should be redistributed to the given sustainer by the given owner's Money pools.
+    /// @dev Increase the amount that has been tapped by the Money pool's owner.
     /// @param self The Money pool to tap.
     /// @param _amount The amount to tap.
     function _tap(Data storage self, uint256 _amount) internal {
-        uint256 _mpAmountTappable = _tappableAmount(self);
-        require(
-            _mpAmountTappable >= _amount,
-            "Fountain::_tap: Not enough to tap"
-        );
         self.tapped = self.tapped.add(_amount);
     }
 
@@ -181,11 +118,20 @@ library MoneyPool {
     /// @param self The Money pool to get the state of.
     /// @return state The state.
     function _state(Data memory self) internal view returns (State) {
-        require(self.exists, "Fountain::_state: Invalid Money Pool");
-
         if (_hasExpired(self)) return State.Redistributing;
         if (_hasStarted(self)) return State.Active;
         return State.Upcoming;
+    }
+
+    /// @dev Returns the amount available for the given Money pool's owner to tap in to.
+    /// @param self The Money pool to make the calculation for.
+    /// @return The resulting amount.
+    function _tappableAmount(Data storage self)
+        internal
+        view
+        returns (uint256)
+    {
+        return Math.min(self.target, self.total).sub(self.tapped);
     }
 
     /// @dev Check to see if the given Money pool has started.
@@ -200,16 +146,6 @@ library MoneyPool {
     /// @return hasExpired The boolean result.
     function _hasExpired(Data memory self) private view returns (bool) {
         return now > self.start.add(self.duration);
-    }
-
-    /// @dev Returns the amount available for the given Money pool's owner to tap in to.
-    /// @param self The Money pool to make the calculation for.
-    /// @return The resulting amount.
-    function _tappableAmount(Data storage self) private view returns (uint256) {
-        return
-            (self.target > self.total ? self.total : self.target).sub(
-                self.tapped
-            );
     }
 
     /// @dev Returns the date that is the nearest multiple of duration from oldEnd.
