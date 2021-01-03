@@ -1,4 +1,4 @@
-const Fountain = artifacts.require("FountainV1");
+const Fountain = artifacts.require("Fountain");
 const truffleAssert = require("truffle-assertions");
 const MockContract = artifacts.require("./MockContract.sol");
 const {
