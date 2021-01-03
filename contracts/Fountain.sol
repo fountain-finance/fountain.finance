@@ -12,12 +12,14 @@ import "./interfaces/IFountain.sol";
 
 @title Fountain
 
+@notice
 Create a Money pool (MP) that'll be used to sustain your project, and specify what its sustainability target is.
 Maybe your project is providing a service or public good, maybe it's being a YouTuber, engineer, or artist -- or anything else.
 Anyone with your address can help sustain your project, and once you're sustainable any additional contributions are redistributed back your sustainers.
 
 Each Money pool is like a tier of the fountain, and the predefined cost to pursue the project is like the bounds of that tier's pool.
 
+@dev
 An address can only be associated with one active Money pool at a time, as well as a mutable one queued up for when the active Money pool expires.
 If a Money pool expires without one queued, the current one will be cloned and sustainments at that time will be allocated to it.
 It's impossible for a Money pool's sustainability or duration to be changed once there has been a sustainment made to it.
@@ -37,7 +39,7 @@ contract Fountain is IFountain {
     using SafeERC20 for IERC20;
     using MoneyPool for MoneyPool.Data;
 
-    // Wrap the sustain and collect transactions in unique locks to prevent reentrency.
+    /// @dev Wrap the sustain and collect transactions in unique locks to prevent reentrency.
     uint8 private lock1 = 1;
     uint8 private lock2 = 1;
     uint8 private lock3 = 1;
@@ -62,13 +64,13 @@ contract Fountain is IFountain {
 
     // --- private properties --- //
 
-    // The official record of all Money pools ever created
+    /// @dev The official record of all Money pools ever created
     mapping(uint256 => MoneyPool.Data) private mps;
 
-    // List of owners sustained by each sustainer
+    /// @dev List of owners sustained by each sustainer
     mapping(address => address[]) private sustainedOwners;
 
-    // Map of whether or not an address has sustained another owner.
+    /// @dev Map of whether or not an address has sustained another owner.
     mapping(address => mapping(address => bool)) private sustainedOwnerTracker;
 
     // --- public properties --- //
@@ -79,16 +81,16 @@ contract Fountain is IFountain {
     /// @notice The latest Money pool for each owner address
     mapping(address => uint256) public override latestMpNumber;
 
-    // The total number of Money pools created, which is used for issuing Money pool numbers.
-    // Money pools should have a number > 0.
+    /// @notice The total number of Money pools created, which is used for issuing Money pool numbers.
+    /// @dev Money pools should have a number > 0.
     uint256 public override mpCount;
 
-    // The contract currently only supports sustainments in dai.
+    /// @notice The contract currently only supports sustainments in dai.
     IERC20 public dai;
 
     // --- events --- //
 
-    /// This event should trigger when a Money pool is configured.
+    /// @notice This event should trigger when a Money pool is configured.
     event ConfigureMp(
         uint256 indexed mpNumber,
         address indexed owner,
@@ -97,7 +99,7 @@ contract Fountain is IFountain {
         IERC20 want
     );
 
-    /// This event should trigger when a Money pool is sustained.
+    /// @notice This event should trigger when a Money pool is sustained.
     event SustainMp(
         uint256 indexed mpNumber,
         address indexed owner,
@@ -106,27 +108,30 @@ contract Fountain is IFountain {
         uint256 amount
     );
 
-    /// This event should trigger when redistributions are collected.
+    /// @notice This event should trigger when redistributions are collected.
     event Collect(address indexed sustainer, uint256 amount);
 
-    /// This event should trigger when sustainments are collected.
+    /// @notice This event should trigger when sustainments are collected.
     event Tap(
         uint256 indexed mpNumber,
         address indexed owner,
+        address indexed beneficiary,
         uint256 amount,
         IERC20 want
     );
 
     // --- external views --- //
 
-    /// @dev The properties of the given Money pool.
-    /// @param _mpNumber The number of the Money pool to get the properties of.
-    /// @return number The number of the Money pool.
-    /// @return want The token the Money pool wants.
-    /// @return target The amount of the want token this Money pool is targeting.
-    /// @return start The time when this Money pool started.
-    /// @return duration The duration of this Money pool measured in seconds.
-    /// @return total The total amount passed through the Money pool. Returns 0 if the Money pool isn't owned by the message sender.
+    /**  
+        @notice The properties of the given Money pool.
+        @param _mpNumber The number of the Money pool to get the properties of.
+        @return number The number of the Money pool.
+        @return want The token the Money pool wants.
+        @return target The amount of the want token this Money pool is targeting.
+        @return start The time when this Money pool started.
+        @return duration The duration of this Money pool measured in seconds.
+        @return total The total amount passed through the Money pool. Returns 0 if the Money pool isn't owned by the message sender.
+    */
     function getMp(uint256 _mpNumber)
         external
         view
@@ -145,14 +150,16 @@ contract Fountain is IFountain {
         return _mp._properties();
     }
 
-    /// @dev The Money pool that's next up for an owner.
-    /// @param _owner The owner of the Money pool being looked for.
-    /// @return id The number of the Money pool.
-    /// @return want The token the Money pool wants.
-    /// @return target The amount of the want token this Money pool is targeting.
-    /// @return start The time when this Money pool started.
-    /// @return duration The duration of this Money pool measured in seconds.
-    /// @return total The total amount passed through the Money pool. Returns 0 if the Money pool isn't owned by the message sender.
+    /**
+        @notice The Money pool that's next up for an owner.
+        @param _owner The owner of the Money pool being looked for.
+        @return id The number of the Money pool.
+        @return want The token the Money pool wants.
+        @return target The amount of the want token this Money pool is targeting.
+        @return start The time when this Money pool started.
+        @return duration The duration of this Money pool measured in seconds.
+        @return total The total amount passed through the Money pool. Returns 0 if the Money pool isn't owned by the message sender.
+    */
     function getUpcomingMp(address _owner)
         external
         view
@@ -171,14 +178,16 @@ contract Fountain is IFountain {
         return _mp._properties();
     }
 
-    /// @dev The currently active Money pool for an owner.
-    /// @param _owner The owner of the money pool being looked for.
-    /// @return number The number of the Money pool.
-    /// @return want The token the Money pool wants.
-    /// @return target The amount of the want token this Money pool is targeting.
-    /// @return start The time when this Money pool started.
-    /// @return duration The duration of this Money pool measured in seconds.
-    /// @return total The total amount passed through the Money pool. Returns 0 if the Money pool isn't owned by the message sender.
+    /**
+        @notice The currently active Money pool for an owner.
+        @param _owner The owner of the money pool being looked for.
+        @return number The number of the Money pool.
+        @return want The token the Money pool wants.
+        @return target The amount of the want token this Money pool is targeting.
+        @return start The time when this Money pool started.
+        @return duration The duration of this Money pool measured in seconds.
+        @return total The total amount passed through the Money pool. Returns 0 if the Money pool isn't owned by the message sender.
+    */
     function getActiveMp(address _owner)
         external
         view
@@ -197,10 +206,12 @@ contract Fountain is IFountain {
         return _mp._properties();
     }
 
-    /// @dev The amount in a Money pool that was contributed by the given address.
-    /// @param _mpNumber The number of the Money pool to get a contribution for.
-    /// @param _sustainer The address of the sustainer to get an amount for.
-    /// @return amount The amount.
+    /**
+        @notice The amount in a Money pool that was contributed by the given address.
+        @param _mpNumber The number of the Money pool to get a contribution for.
+        @param _sustainer The address of the sustainer to get an amount for.
+        @return amount The amount.
+    */
     function getSustainment(uint256 _mpNumber, address _sustainer)
         external
         view
@@ -210,9 +221,11 @@ contract Fountain is IFountain {
         return mps[_mpNumber].sustainments[_sustainer];
     }
 
-    /// @dev The amount left to be withdrawn by the Money pool's owner.
-    /// @param _mpNumber The number of the Money pool to get the available sustainment from.
-    /// @return amount The amount.
+    /**
+        @notice The amount left to be withdrawn by the Money pool's owner.
+        @param _mpNumber The number of the Money pool to get the available sustainment from.
+        @return amount The amount.
+    */
     function getTappableAmount(uint256 _mpNumber)
         external
         view
@@ -222,10 +235,12 @@ contract Fountain is IFountain {
         return mps[_mpNumber]._tappableAmount();
     }
 
-    /// @dev The amount of redistribution in a Money pool that can be claimed by the given address.
-    /// @param _mpNumber The number of the Money pool to get a redistribution amount for.
-    /// @param _sustainer The address of the sustainer to get an amount for.
-    /// @return amount The amount.
+    /** 
+        @notice The amount of redistribution in a Money pool that can be claimed by the given address.
+        @param _mpNumber The number of the Money pool to get a redistribution amount for.
+        @param _sustainer The address of the sustainer to get an amount for.
+        @return amount The amount.
+    */
     function getTrackedRedistribution(uint256 _mpNumber, address _sustainer)
         external
         view
@@ -242,12 +257,14 @@ contract Fountain is IFountain {
         mpCount = 0;
     }
 
-    /// @dev Configures the sustainability target and duration of the sender's current Money pool if it hasn't yet received sustainments, or
-    /// @dev sets the properties of the Money pool that will take effect once the current Money pool expires.
-    /// @param _target The sustainability target to set.
-    /// @param _duration The duration to set, measured in seconds.
-    /// @param _want The token that the Money pool wants.
-    /// @return mpNumber The number of the Money pool that was successfully configured.
+    /**
+        @notice Configures the sustainability target and duration of the sender's current Money pool if it hasn't yet received sustainments, or
+        sets the properties of the Money pool that will take effect once the current Money pool expires.
+        @param _target The sustainability target to set.
+        @param _duration The duration to set, measured in seconds.
+        @param _want The token that the Money pool wants.
+        @return mpNumber The number of the Money pool that was successfully configured.
+    */
     function configureMp(
         uint256 _target,
         uint256 _duration,
@@ -280,11 +297,14 @@ contract Fountain is IFountain {
         return _mp.number;
     }
 
-    /// @dev Sustain an owner's active Money pool.
-    /// @param _owner The owner of the Money pool to sustain.
-    /// @param _amount Amount of sustainment.
-    /// @param _beneficiary The address to associate with this sustainment. This is usually mes.sender, but can be something else if the sender is making this sustainment on the beneficiary's behalf.
-    /// @return mpNumber The number of the Money pool that was successfully sustained.
+    /** 
+        @notice Sustain an owner's active Money pool.
+        @param _owner The owner of the Money pool to sustain.
+        @param _amount Amount of sustainment.
+        @param _beneficiary The address to associate with this sustainment. This is usually mes.sender, but can be something else if the sender is making this sustainment on the beneficiary's behalf.
+        @return mpNumber The number of the Money pool that was successfully sustained.
+    */
+
     function sustain(
         address _owner,
         uint256 _amount,
@@ -318,8 +338,10 @@ contract Fountain is IFountain {
         return _mp.number;
     }
 
-    /// @dev A message sender can collect what's been redistributed to it by Money pools once they have expired.
-    /// @return amount If the collecting was a success.
+    /** 
+        @notice A message sender can collect what's been redistributed to it by Money pools once they have expired.
+        @return amount If the collecting was a success.
+    */
     function collectAll() external override lockCollect returns (uint256) {
         // Iterate over all of sender's sustained addresses to make sure
         // redistribution has completed for all redistributable Money pools
@@ -329,9 +351,11 @@ contract Fountain is IFountain {
         return _amount;
     }
 
-    /// @dev A message sender can collect what's been redistributed to it by a specific Money pool once it's expired.
-    /// @param _owner The Money pool owner to collect from.
-    /// @return success If the collecting was a success.
+    /**
+        @notice A message sender can collect what's been redistributed to it by a specific Money pool once it's expired.
+        @param _owner The Money pool owner to collect from.
+        @return success If the collecting was a success.
+     */
     function collectFromOwner(address _owner)
         external
         override
@@ -343,9 +367,11 @@ contract Fountain is IFountain {
         return _amount;
     }
 
-    /// @dev A message sender can collect what's been redistributed to it by specific Money pools once they have expired.
-    /// @param _owners The Money pools owners to collect from.
-    /// @return success If the collecting was a success.
+    /** 
+        @notice A message sender can collect what's been redistributed to it by specific Money pools once they have expired.
+        @param _owners The Money pools owners to collect from.
+        @return success If the collecting was a success.
+    */
     function collectFromOwners(address[] calldata _owners)
         external
         override
@@ -357,16 +383,18 @@ contract Fountain is IFountain {
         return _amount;
     }
 
-    /// @dev A message sender can tap into funds that have been used to sustain it's Money pools.
-    /// @param _mpNumber The number of the Money pool to tap.
-    /// @param _amount The amount to tap.
-    /// @return success If the collecting was a success.
-    function tap(uint256 _mpNumber, uint256 _amount)
-        external
-        override
-        lockTap
-        returns (bool)
-    {
+    /**
+        @notice A message sender can tap into funds that have been used to sustain it's Money pools.
+        @param _mpNumber The number of the Money pool to tap.
+        @param _amount The amount to tap.
+        @param _beneficiary The address to transfer the funds to.
+        @return success If the collecting was a success.
+    */
+    function tap(
+        uint256 _mpNumber,
+        uint256 _amount,
+        address _beneficiary
+    ) external override lockTap returns (bool) {
         MoneyPool.Data storage _mp = mps[_mpNumber];
         require(
             _mp.owner == msg.sender,
@@ -378,24 +406,29 @@ contract Fountain is IFountain {
         );
 
         _mp._tap(_amount);
-        _mp.want.safeTransfer(msg.sender, _amount);
+        _mp.want.safeTransfer(_beneficiary, _amount);
 
-        emit Tap(_mpNumber, msg.sender, _amount, _mp.want);
+        emit Tap(_mpNumber, msg.sender, _beneficiary, _amount, _mp.want);
 
         return true;
     }
 
-    /// @dev Executes the collection of redistributed funds.
-    /// @param _sustainer The sustainer address to redistribute to.
-    /// @param _amount The amount to collect.
+    /** 
+        @notice Executes the collection of redistributed funds.
+        @param _sustainer The sustainer address to redistribute to.
+        @param _amount The amount to collect.
+    */
     function _performCollect(address _sustainer, uint256 _amount) private {
         dai.safeTransfer(_sustainer, _amount);
         emit Collect(_sustainer, _amount);
     }
 
-    /// @dev The sustainability of a Money pool cannot be updated if there have been sustainments made to it.
-    /// @param _owner The address who owns the Money pool to look for.
-    /// @return _mp The resulting Money pool.
+    /** 
+        @notice The Money pool that is configurable for this owner.
+        @dev The sustainability of a Money pool cannot be updated if there have been sustainments made to it.
+        @param _owner The address who owns the Money pool to look for.
+        @return _mp The resulting Money pool.
+    */
     function _mpToConfigure(address _owner)
         private
         returns (MoneyPool.Data storage _mp)
@@ -416,9 +449,12 @@ contract Fountain is IFountain {
         return _newMp;
     }
 
-    /// @dev Only active Money pools can be sustained.
-    /// @param _owner The address who owns the Money pool to look for.
-    /// @return _mp The resulting Money pool.
+    /** 
+        @notice The Money pool that is accepting sustainments for this owner.
+        @dev Only active Money pools can be sustained.
+        @param _owner The address who owns the Money pool to look for.
+        @return _mp The resulting Money pool.
+    */
     function _mpToSustain(address _owner)
         private
         returns (MoneyPool.Data storage _mp)
@@ -434,7 +470,10 @@ contract Fountain is IFountain {
         // No upcoming moneyPool found, clone the latest moneyPool
         _mp = mps[latestMpNumber[_owner]];
 
-        require(_mp.exists, "Fountain::_mpToSustain: Money pool not found");
+        require(
+            _mp.exists,
+            "Fountain::_mpToSustain: This owner has no Money pools"
+        );
 
         // Use a start date that's a multiple of the duration.
         // This creates the effect that there have been scheduled Money pools ever since the `latest`, even if `latest` is a long time in the past.
@@ -444,10 +483,12 @@ contract Fountain is IFountain {
         return _newMp;
     }
 
-    /// @dev Record the redistribution the amount that should be redistributed to the given sustainer by the given owners' Money pools.
-    /// @param _sustainer The sustainer address to redistribute to.
-    /// @param _owners The Money pool owners to redistribute from.
-    /// @return _amount The amount that has been redistributed.
+    /** 
+        @notice Record the redistribution the amount that should be redistributed to the given sustainer by the given owners' Money pools.
+        @param _sustainer The sustainer address to redistribute to.
+        @param _owners The Money pool owners to redistribute from.
+        @return _amount The amount that has been redistributed.
+    */
     function _redistributeAmount(address _sustainer, address[] memory _owners)
         private
         returns (uint256)
@@ -459,10 +500,12 @@ contract Fountain is IFountain {
         return _amount;
     }
 
-    /// @dev Record the redistribution the amount that should be redistributed to the given sustainer by the given owner's Money pools.
-    /// @param _sustainer The sustainer address to redistribute to.
-    /// @param _owner The Money pool owner to redistribute from.
-    /// @return _amount The amount that has been redistributed.
+    /** 
+        @notice Record the redistribution the amount that should be redistributed to the given sustainer by the given owner's Money pools.
+        @param _sustainer The sustainer address to redistribute to.
+        @param _owner The Money pool owner to redistribute from.
+        @return _amount The amount that has been redistributed.
+    */
     function _redistributeAmount(address _sustainer, address _owner)
         private
         returns (uint256)
@@ -498,10 +541,12 @@ contract Fountain is IFountain {
         return _amount;
     }
 
-    /// @notice Initializes a Money pool to be sustained for the sending address.
-    /// @param _owner The owner of the Money pool being initialized.
-    /// @param _start The start time for the new Money pool.
-    /// @return _newMp The initialized Money pool.
+    /** 
+        @notice Initializes a Money pool to be sustained for the sending address.
+        @param _owner The owner of the Money pool being initialized.
+        @param _start The start time for the new Money pool.
+        @return _newMp The initialized Money pool.
+    */
     function _initMp(address _owner, uint256 _start)
         private
         returns (MoneyPool.Data storage _newMp)
@@ -513,10 +558,12 @@ contract Fountain is IFountain {
         latestMpNumber[_owner] = mpCount;
     }
 
-    /// @dev The amount of redistribution in a Money pool that can be claimed by the given address.
-    /// @param _mpNumber The number of the Money pool to get a redistribution amount for.
-    /// @param _sustainer The address of the sustainer to get an amount for.
-    /// @return amount The amount.
+    /** 
+        @notice The amount of redistribution in a Money pool that can be claimed by the given address.
+        @param _mpNumber The number of the Money pool to get a redistribution amount for.
+        @param _sustainer The address of the sustainer to get an amount for.
+        @return amount The amount.
+    */
     function _trackedRedistribution(uint256 _mpNumber, address _sustainer)
         private
         view
@@ -537,9 +584,11 @@ contract Fountain is IFountain {
         return surplus.mul(_proportionOfTotal);
     }
 
-    /// @dev The currently active Money pool for an owner.
-    /// @param _owner The owner of the money pool being looked for.
-    /// @return _mp The active Money pool.
+    /** 
+        @notice The currently active Money pool for an owner.
+        @param _owner The owner of the money pool being looked for.
+        @return _mp The active Money pool.
+    */
     function _activeMp(address _owner)
         private
         view
@@ -558,9 +607,11 @@ contract Fountain is IFountain {
         return mps[0];
     }
 
-    /// @dev The Money pool that's next up for an owner.
-    /// @param _owner The owner of the money pool being looked for.
-    /// @return _mp The upcoming Money pool.
+    /** 
+        @notice The Money pool that's next up for an owner.
+        @param _owner The owner of the money pool being looked for.
+        @return _mp The upcoming Money pool.
+    */
     function _upcomingMp(address _owner)
         private
         view

@@ -42,11 +42,13 @@ library MoneyPool {
         uint8 version;
     }
 
-    /// @dev Initializes a Money pool's parameters.
-    /// @param self The Money pool to initialize.
-    /// @param _owner The owner of the Money pool.
-    /// @param _start The start time of the Money pool.
-    /// @param _number The number of the Money pool.
+    /** 
+        @notice Initializes a Money pool's parameters.
+        @param self The Money pool to initialize.
+        @param _owner The owner of the Money pool.
+        @param _start The start time of the Money pool.
+        @param _number The number of the Money pool.
+    */
     function _init(
         Data storage self,
         address _owner,
@@ -62,12 +64,14 @@ library MoneyPool {
         self.version = 1;
     }
 
-    /// @dev Configures the sustainability target and duration of the sender's current Money pool if it hasn't yet received sustainments, or
-    /// @dev sets the properties of the Money pool that will take effect once the current Money pool expires.
-    /// @param self The Money pool to configure.
-    /// @param _target The sustainability target to set.
-    /// @param _duration The duration to set, measured in seconds.
-    /// @param _want The token that the Money pool wants.
+    /** 
+        @dev Configures the sustainability target and duration of the sender's current Money pool if it hasn't yet received sustainments, or
+        sets the properties of the Money pool that will take effect once the current Money pool expires.
+        @param self The Money pool to configure.
+        @param _target The sustainability target to set.
+        @param _duration The duration to set, measured in seconds.
+        @param _want The token that the Money pool wants.
+    */
     function _configure(
         Data storage self,
         uint256 _target,
@@ -79,11 +83,13 @@ library MoneyPool {
         self.want = _want;
     }
 
-    /// @dev Contribute a specified amount to the sustainability of the specified address's active Money pool.
-    /// @dev If the amount results in surplus, redistribute the surplus proportionally to sustainers of the Money pool.
-    /// @param self The Money pool to sustain.
-    /// @param _amount Amount of sustainment.
-    /// @param _beneficiary The address to associate with this sustainment. The mes.sender is making this sustainment on the beneficiary's behalf.
+    /** 
+        @notice Contribute a specified amount to the sustainability of the specified address's active Money pool.
+        If the amount results in surplus, redistribute the surplus proportionally to sustainers of the Money pool.
+        @param self The Money pool to sustain.
+        @param _amount Amount of sustainment.
+        @param _beneficiary The address to associate with this sustainment. The mes.sender is making this sustainment on the beneficiary's behalf.
+    */
     function _sustain(
         Data storage self,
         uint256 _amount,
@@ -98,34 +104,43 @@ library MoneyPool {
         self.total = self.total.add(_amount);
     }
 
-    /// @dev Increase the amount that has been tapped by the Money pool's owner.
-    /// @param self The Money pool to tap.
-    /// @param _amount The amount to tap.
+    /** 
+        @dev Increase the amount that has been tapped by the Money pool's owner.
+        @param self The Money pool to tap.
+        @param _amount The amount to tap.
+    */
+
     function _tap(Data storage self, uint256 _amount) internal {
         self.tapped = self.tapped.add(_amount);
     }
 
-    /// @notice Clones the properties from the base.
-    /// @param self The Money pool to clone onto.
-    /// @param _baseMp The Money pool to clone from.
+    /**
+        @notice Clones the properties from the base.
+        @param self The Money pool to clone onto.
+        @param _baseMp The Money pool to clone from.
+    */
     function _clone(Data storage self, Data memory _baseMp) internal {
         self.target = _baseMp.target;
         self.duration = _baseMp.duration;
         self.want = _baseMp.want;
     }
 
-    /// @dev The state the Money pool for the given number is in.
-    /// @param self The Money pool to get the state of.
-    /// @return state The state.
+    /** 
+        @notice The state the Money pool for the given number is in.
+        @param self The Money pool to get the state of.
+        @return state The state.
+    */
     function _state(Data memory self) internal view returns (State) {
         if (_hasExpired(self)) return State.Redistributing;
         if (_hasStarted(self)) return State.Active;
         return State.Upcoming;
     }
 
-    /// @dev Returns the amount available for the given Money pool's owner to tap in to.
-    /// @param self The Money pool to make the calculation for.
-    /// @return The resulting amount.
+    /** 
+        @notice Returns the amount available for the given Money pool's owner to tap in to.
+        @param self The Money pool to make the calculation for.
+        @return The resulting amount.
+    */
     function _tappableAmount(Data storage self)
         internal
         view
@@ -134,8 +149,10 @@ library MoneyPool {
         return Math.min(self.target, self.total).sub(self.tapped);
     }
 
-    /// @dev Returns the date that is the nearest multiple of duration from oldEnd.
-    /// @return start The date.
+    /** 
+        @notice Returns the date that is the nearest multiple of duration from oldEnd.
+        @return start The date.
+    */
     function _determineNextStart(Data storage self)
         internal
         view
@@ -149,14 +166,16 @@ library MoneyPool {
         return now.sub(_distanceToStart);
     }
 
-    /// @dev The properties of the given Money pool.
-    /// @param self The Money pool to get the properties of.
-    /// @return number The number of the Money pool.
-    /// @return want The token the Money pool wants.
-    /// @return target The amount of the want token this Money pool is targeting.
-    /// @return start The time when this Money pool started.
-    /// @return duration The duration of this Money pool, measured in seconds.
-    /// @return total The total amount passed through the Money pool. Returns 0 if the Money pool isn't owned by the message sender.
+    /** 
+        @notice The properties of the given Money pool.
+        @param self The Money pool to get the properties of.
+        @return number The number of the Money pool.
+        @return want The token the Money pool wants.
+        @return target The amount of the want token this Money pool is targeting.
+        @return start The time when this Money pool started.
+        @return duration The duration of this Money pool, measured in seconds.
+        @return total The total amount passed through the Money pool. Returns 0 if the Money pool isn't owned by the message sender.
+    */
     function _properties(Data memory self)
         internal
         pure
@@ -179,16 +198,20 @@ library MoneyPool {
         );
     }
 
-    /// @dev Check to see if the given Money pool has started.
-    /// @param self The Money pool to check.
-    /// @return hasStarted The boolean result.
+    /** 
+        @notice Check to see if the given Money pool has started.
+        @param self The Money pool to check.
+        @return hasStarted The boolean result.
+    */
     function _hasStarted(Data memory self) private view returns (bool) {
         return now >= self.start;
     }
 
-    /// @dev Check to see if the given MoneyPool has expired.
-    /// @param self The Money pool to check.
-    /// @return hasExpired The boolean result.
+    /** 
+        @notice Check to see if the given MoneyPool has expired.
+        @param self The Money pool to check.
+        @return hasExpired The boolean result.
+    */
     function _hasExpired(Data memory self) private view returns (bool) {
         return now > self.start.add(self.duration);
     }

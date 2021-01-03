@@ -34,6 +34,7 @@ interface IFountain {
     event Tap(
         uint256 indexed mpId,
         address indexed owner,
+        address indexed beneficiary,
         uint256 amount,
         address want
     );
@@ -111,7 +112,9 @@ interface IFountain {
         external
         returns (uint256 _amount);
 
-    function tap(uint256 _mpId, uint256 _amount)
-        external
-        returns (bool _success);
+    function tap(
+        uint256 _mpId,
+        uint256 _amount,
+        address _beneficiary
+    ) external returns (bool _success);
 }
