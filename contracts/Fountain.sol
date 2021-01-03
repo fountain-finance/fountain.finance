@@ -80,7 +80,7 @@ contract Fountain is IFountain {
     mapping(address => uint256) public override latestMpNumber;
 
     // The total number of Money pools created, which is used for issuing Money pool numbers.
-    // Money pools should have an number > 0.
+    // Money pools should have a number > 0.
     uint256 public override mpCount;
 
     // The contract currently only supports sustainments in dai.
@@ -325,7 +325,6 @@ contract Fountain is IFountain {
         // redistribution has completed for all redistributable Money pools
         uint256 _amount =
             _redistributeAmount(msg.sender, sustainedOwners[msg.sender]);
-
         _performCollect(msg.sender, _amount);
         return _amount;
     }
@@ -439,9 +438,8 @@ contract Fountain is IFountain {
 
         // Use a start date that's a multiple of the duration.
         // This creates the effect that there have been scheduled Money pools ever since the `latest`, even if `latest` is a long time in the past.
-        uint256 _start = _mp._determineNextStart();
-
-        MoneyPool.Data storage _newMp = _initMp(_mp.owner, _start);
+        MoneyPool.Data storage _newMp =
+            _initMp(_mp.owner, _mp._determineNextStart());
         _newMp._clone(_mp);
         return _newMp;
     }

@@ -134,20 +134,6 @@ library MoneyPool {
         return Math.min(self.target, self.total).sub(self.tapped);
     }
 
-    /// @dev Check to see if the given Money pool has started.
-    /// @param self The Money pool to check.
-    /// @return hasStarted The boolean result.
-    function _hasStarted(Data memory self) private view returns (bool) {
-        return now >= self.start;
-    }
-
-    /// @dev Check to see if the given MoneyPool has expired.
-    /// @param self The Money pool to check.
-    /// @return hasExpired The boolean result.
-    function _hasExpired(Data memory self) private view returns (bool) {
-        return now > self.start.add(self.duration);
-    }
-
     /// @dev Returns the date that is the nearest multiple of duration from oldEnd.
     /// @return start The date.
     function _determineNextStart(Data storage self)
@@ -191,5 +177,19 @@ library MoneyPool {
             self.duration,
             self.total
         );
+    }
+
+    /// @dev Check to see if the given Money pool has started.
+    /// @param self The Money pool to check.
+    /// @return hasStarted The boolean result.
+    function _hasStarted(Data memory self) private view returns (bool) {
+        return now >= self.start;
+    }
+
+    /// @dev Check to see if the given MoneyPool has expired.
+    /// @param self The Money pool to check.
+    /// @return hasExpired The boolean result.
+    function _hasExpired(Data memory self) private view returns (bool) {
+        return now > self.start.add(self.duration);
     }
 }
