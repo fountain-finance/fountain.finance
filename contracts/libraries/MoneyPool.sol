@@ -42,6 +42,8 @@ library MoneyPool {
         uint8 version;
     }
 
+    // --- internal transactions --- //
+
     /** 
         @notice Initializes a Money pool's parameters.
         @param self The Money pool to initialize.
@@ -125,6 +127,8 @@ library MoneyPool {
         self.want = _baseMp.want;
     }
 
+    // --- internal views --- //
+
     /** 
         @notice The state the Money pool for the given number is in.
         @param self The Money pool to get the state of.
@@ -150,6 +154,30 @@ library MoneyPool {
     }
 
     /** 
+        @notice The amount of redistribution in a Money pool that can be claimed by the given address.
+        @param self The Money pool to get a redistribution amount for.
+        @param _sustainer The address of the sustainer to get an amount for.
+        @return amount The amount.
+    */
+    function _trackedRedistribution(Data storage self, address _sustainer)
+        internal
+        view
+        returns (uint256)
+    {
+        // Return 0 if there's no surplus.
+        if (self.total < self.target) return 0;
+
+        uint256 _surplus = self.total.sub(self.target);
+
+        // Calculate their share of the sustainment for the the given sustainer.
+        // allocate a proportional share of the surplus, overwriting any previous value.
+        uint256 _proportionOfTotal =
+            self.sustainments[_sustainer].div(self.total);
+
+        return _surplus.mul(_proportionOfTotal);
+    }
+
+    /** 
         @notice Returns the date that is the nearest multiple of duration from oldEnd.
         @return start The date.
     */
@@ -164,6 +192,26 @@ library MoneyPool {
         // Otherwise, use the closest multiple of the duration from the old end.
         uint256 _distanceToStart = (now.sub(_end)).mod(self.duration);
         return now.sub(_distanceToStart);
+    }
+
+    // --- private views --- //
+
+    /** 
+        @notice Check to see if the given Money pool has started.
+        @param self The Money pool to check.
+        @return hasStarted The boolean result.
+    */
+    function _hasStarted(Data memory self) private view returns (bool) {
+        return now >= self.start;
+    }
+
+    /** 
+        @notice Check to see if the given MoneyPool has expired.
+        @param self The Money pool to check.
+        @return hasExpired The boolean result.
+    */
+    function _hasExpired(Data memory self) private view returns (bool) {
+        return now > self.start.add(self.duration);
     }
 
     /** 
@@ -196,23 +244,5 @@ library MoneyPool {
             self.duration,
             self.total
         );
-    }
-
-    /** 
-        @notice Check to see if the given Money pool has started.
-        @param self The Money pool to check.
-        @return hasStarted The boolean result.
-    */
-    function _hasStarted(Data memory self) private view returns (bool) {
-        return now >= self.start;
-    }
-
-    /** 
-        @notice Check to see if the given MoneyPool has expired.
-        @param self The Money pool to check.
-        @return hasExpired The boolean result.
-    */
-    function _hasExpired(Data memory self) private view returns (bool) {
-        return now > self.start.add(self.duration);
     }
 }

@@ -247,7 +247,12 @@ contract Fountain is IFountain {
         override
         returns (uint256)
     {
-        return _trackedRedistribution(_mpNumber, _sustainer);
+        MoneyPool.Data storage _mp = mps[_mpNumber];
+        require(
+            _mp.exists,
+            "Fountain::getTrackedRedistribution:: Money Pool not found"
+        );
+        return _mp._trackedRedistribution(_sustainer);
     }
 
     // --- external transactions --- //
@@ -413,6 +418,8 @@ contract Fountain is IFountain {
         return true;
     }
 
+    // --- private transactions --- //
+
     /** 
         @notice Executes the collection of redistributed funds.
         @param _sustainer The sustainer address to redistribute to.
@@ -529,9 +536,7 @@ contract Fountain is IFountain {
         // redistributed.
         while (_mp.exists && !_mp.hasRedistributed[_sustainer]) {
             if (_mp._state() == MoneyPool.State.Redistributing) {
-                _amount = _amount.add(
-                    _trackedRedistribution(_mpNumber, _sustainer)
-                );
+                _amount = _amount.add(_mp._trackedRedistribution(_sustainer));
                 _mp.hasRedistributed[_sustainer] = true;
             }
             _mpNumber = previousMpNumber[_mpNumber];
@@ -558,31 +563,7 @@ contract Fountain is IFountain {
         latestMpNumber[_owner] = mpCount;
     }
 
-    /** 
-        @notice The amount of redistribution in a Money pool that can be claimed by the given address.
-        @param _mpNumber The number of the Money pool to get a redistribution amount for.
-        @param _sustainer The address of the sustainer to get an amount for.
-        @return amount The amount.
-    */
-    function _trackedRedistribution(uint256 _mpNumber, address _sustainer)
-        private
-        view
-        returns (uint256)
-    {
-        MoneyPool.Data storage _mp = mps[_mpNumber];
-
-        // Return 0 if there's no surplus.
-        if (!_mp.exists || _mp.total < _mp.target) return 0;
-
-        uint256 surplus = _mp.total.sub(_mp.target);
-
-        // Calculate their share of the sustainment for the the given sustainer.
-        // allocate a proportional share of the surplus, overwriting any previous value.
-        uint256 _proportionOfTotal =
-            _mp.sustainments[_sustainer].div(_mp.total);
-
-        return surplus.mul(_proportionOfTotal);
-    }
+    // --- private views --- //
 
     /** 
         @notice The currently active Money pool for an owner.
