@@ -113,7 +113,7 @@ interface IFountainV1 {
         external
         returns (uint256 amount);
 
-    function collectSustainments(uint256 _mpId, uint256 _amount)
+    function collectSustainment(uint256 _mpId, uint256 _amount)
         external
         returns (bool success);
 }
