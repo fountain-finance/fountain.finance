@@ -32,7 +32,7 @@ The basin of the Fountain should always be the sustainers of projects.
 */
 
 /// @notice The contract managing the state of all Money pools.
-contract FountainV1 {
+contract FountainV1 is IFountainV1 {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
     using MoneyPool for MoneyPool.Data;
@@ -74,14 +74,14 @@ contract FountainV1 {
     // --- public properties --- //
 
     /// @notice A mapping from Money pool number's the the numbers of the previous Money pool for the same owner.
-    mapping(uint256 => uint256) public previousMpNumber;
+    mapping(uint256 => uint256) public override previousMpNumber;
 
     /// @notice The latest Money pool for each owner address
-    mapping(address => uint256) public latestMpNumber;
+    mapping(address => uint256) public override latestMpNumber;
 
     // The total number of Money pools created, which is used for issuing Money pool numbers.
     // Money pools should have an number > 0.
-    uint256 public mpCount;
+    uint256 public override mpCount;
 
     // The contract currently only supports sustainments in dai.
     IERC20 public dai;
@@ -112,6 +112,7 @@ contract FountainV1 {
     function getMp(uint256 _mpNumber)
         external
         view
+        override
         returns (
             uint256 number,
             IERC20 want,
@@ -137,6 +138,7 @@ contract FountainV1 {
     function getUpcomingMp(address _owner)
         external
         view
+        override
         returns (
             uint256 id,
             IERC20 want,
@@ -162,6 +164,7 @@ contract FountainV1 {
     function getActiveMp(address _owner)
         external
         view
+        override
         returns (
             uint256 number,
             IERC20 want,
@@ -183,6 +186,7 @@ contract FountainV1 {
     function getSustainment(uint256 _mpNumber, address _sustainer)
         external
         view
+        override
         returns (uint256)
     {
         return mps[_mpNumber].sustainments[_sustainer];
@@ -195,6 +199,7 @@ contract FountainV1 {
     function getTrackedRedistribution(uint256 _mpNumber, address _sustainer)
         external
         view
+        override
         returns (uint256)
     {
         return _trackedRedistribution(_mpNumber, _sustainer);
@@ -217,7 +222,7 @@ contract FountainV1 {
         uint256 _target,
         uint256 _duration,
         IERC20 _want
-    ) external returns (uint256) {
+    ) external override returns (uint256) {
         require(
             _duration >= 1,
             "Fountain::configureMp: A Money Pool must be at least one day long"
@@ -246,7 +251,7 @@ contract FountainV1 {
         address _owner,
         uint256 _amount,
         address _beneficiary
-    ) external lockSustain returns (uint256) {
+    ) external override lockSustain returns (uint256) {
         require(
             _amount > 0,
             "Fountain::sustain: The sustainment amount should be positive"
@@ -269,6 +274,7 @@ contract FountainV1 {
     /// @return amount If the collecting was a success.
     function collectAllRedistributions()
         external
+        override
         lockCollectRedistribution
         returns (uint256)
     {
@@ -286,6 +292,7 @@ contract FountainV1 {
     /// @return success If the collecting was a success.
     function collectRedistributionsFromOwner(address _owner)
         external
+        override
         lockCollectRedistribution
         returns (uint256)
     {
@@ -299,6 +306,7 @@ contract FountainV1 {
     /// @return success If the collecting was a success.
     function collectRedistributionsFromOwners(address[] calldata _owners)
         external
+        override
         lockCollectRedistribution
         returns (uint256)
     {
@@ -313,6 +321,7 @@ contract FountainV1 {
     /// @return success If the collecting was a success.
     function collectSustainments(uint256 _mpNumber, uint256 _amount)
         external
+        override
         lockCollectSustainment
         returns (bool)
     {

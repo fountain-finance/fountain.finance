@@ -4,47 +4,17 @@ pragma solidity >=0.6.0 <0.8.0;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 interface IFountainV1 {
-    function previousMpIds(uint256 _mpId) external view returns (uint256);
+    function previousMpNumber(uint256 _mpId) external view returns (uint256);
 
-    function latestMpIds(address _owner) external view returns (uint256);
+    function latestMpNumber(address _owner) external view returns (uint256);
 
     function mpCount() external view returns (uint256);
-
-    event InitializeMp(uint256 indexed mpId, address indexed owner);
-    event ActivateMp(
-        uint256 indexed mpId,
-        address indexed owner,
-        uint256 indexed target,
-        uint256 duration,
-        IERC20 want
-    );
-    event ConfigureMp(
-        uint256 indexed mpId,
-        address indexed owner,
-        uint256 indexed target,
-        uint256 duration,
-        IERC20 want
-    );
-    event SustainMp(
-        uint256 indexed mpId,
-        address indexed owner,
-        address indexed beneficiary,
-        address sustainer,
-        uint256 amount
-    );
-    event CollectRedistributions(address indexed sustainer, uint256 amount);
-    event CollectSustainments(
-        uint256 indexed mpId,
-        address indexed owner,
-        uint256 amount,
-        address want
-    );
 
     function getMp(uint256 _mpId)
         external
         view
         returns (
-            uint256 id,
+            uint256 number,
             IERC20 want,
             uint256 target,
             uint256 start,
@@ -56,7 +26,7 @@ interface IFountainV1 {
         external
         view
         returns (
-            uint256 id,
+            uint256 number,
             IERC20 want,
             uint256 target,
             uint256 start,
@@ -68,7 +38,7 @@ interface IFountainV1 {
         external
         view
         returns (
-            uint256 id,
+            uint256 number,
             IERC20 want,
             uint256 target,
             uint256 start,
@@ -76,7 +46,7 @@ interface IFountainV1 {
             uint256 balance
         );
 
-    function getSustainmentBalance(uint256 _mpId)
+    function getSustainment(uint256 _mpId)
         external
         view
         returns (uint256 amount);
