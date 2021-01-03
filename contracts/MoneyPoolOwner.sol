@@ -17,6 +17,16 @@ abstract contract MoneyPoolOwner is Ownable {
         IFountain indexed newFountain
     );
 
+    constructor(
+        IFountain fountain,
+        uint256 target,
+        uint256 duration,
+        IERC20 want
+    ) internal {
+        setFountain(fountain);
+        configureMp(target, duration, want);
+    }
+
     /** 
         @notice This allows the contract owner to collect funds from your Money pool.
         @param _mpNumber The number of the Money pool to collect funds from.
@@ -37,7 +47,7 @@ abstract contract MoneyPoolOwner is Ownable {
         @dev You should also set the Fountain for the first time in your constructor.
         @param _newFountain The new Fountain contract.
     */
-    function setFountain(IFountain _newFountain) public virtual onlyOwner {
+    function setFountain(IFountain _newFountain) public onlyOwner {
         require(
             _newFountain != IFountain(0),
             "MoneyPoolOwner: new Fountain is the zero address"
@@ -60,11 +70,11 @@ abstract contract MoneyPoolOwner is Ownable {
         @param _want The new token that your MoneyPool wants.
         @return mpNumber The number of the Money pool that was reconfigured.
     */
-    function _configureMp(
+    function configureMp(
         uint256 _target,
         uint256 _duration,
         IERC20 _want
-    ) internal returns (uint256) {
+    ) public virtual onlyOwner returns (uint256) {
         // Increse the allowance so that Fountain can transfer want tokens from this contract's wallet into a MoneyPool.
         _want.safeIncreaseAllowance(address(_fountain), 10000000000000000000);
         // If there's an active Money pool, you'll want to decrease the allowance for the old want once it expires.
