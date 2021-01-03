@@ -435,10 +435,10 @@ contract FountainV1 is IFountainV1 {
         // Increment the total amount contributed to the sustainment of the Money pool.
         _mp.total = _mp.total.add(_amount);
 
-        // Add this address to the sustainer's list of sustained addresses
-        if (sustainedOwnerTracker[_beneficiary][msg.sender] == false) {
-            sustainedOwners[_beneficiary].push(msg.sender);
-            sustainedOwnerTracker[_beneficiary][msg.sender] == true;
+        // Add this address to the sustainer's list of sustained owners
+        if (sustainedOwnerTracker[_beneficiary][_owner] == false) {
+            sustainedOwners[_beneficiary].push(_owner);
+            sustainedOwnerTracker[_beneficiary][_owner] == true;
         }
 
         // Emit events.
