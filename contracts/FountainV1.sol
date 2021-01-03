@@ -280,7 +280,7 @@ contract FountainV1 is IFountainV1 {
         return _mp.number;
     }
 
-    /// @dev Overloaded from above with the addition of:
+    /// @dev Sustain an owner's active Money pool.
     /// @param _owner The owner of the Money pool to sustain.
     /// @param _amount Amount of sustainment.
     /// @param _beneficiary The address to associate with this sustainment. This is usually mes.sender, but can be something else if the sender is making this sustainment on the beneficiary's behalf.
@@ -326,7 +326,7 @@ contract FountainV1 is IFountainV1 {
         uint256 _amount =
             _redistributeAmount(msg.sender, sustainedOwners[msg.sender]);
 
-        _performCollectRedistributions(msg.sender, _amount);
+        _performCollect(msg.sender, _amount);
         return _amount;
     }
 
@@ -340,7 +340,7 @@ contract FountainV1 is IFountainV1 {
         returns (uint256)
     {
         uint256 _amount = _redistributeAmount(msg.sender, _owner);
-        _performCollectRedistributions(msg.sender, _amount);
+        _performCollect(msg.sender, _amount);
         return _amount;
     }
 
@@ -354,7 +354,7 @@ contract FountainV1 is IFountainV1 {
         returns (uint256)
     {
         uint256 _amount = _redistributeAmount(msg.sender, _owners);
-        _performCollectRedistributions(msg.sender, _amount);
+        _performCollect(msg.sender, _amount);
         return _amount;
     }
 
@@ -386,14 +386,10 @@ contract FountainV1 is IFountainV1 {
         return true;
     }
 
-    // --- private --- //
-
     /// @dev Executes the collection of redistributed funds.
     /// @param _sustainer The sustainer address to redistribute to.
     /// @param _amount The amount to collect.
-    function _performCollectRedistributions(address _sustainer, uint256 _amount)
-        private
-    {
+    function _performCollect(address _sustainer, uint256 _amount) private {
         dai.safeTransfer(_sustainer, _amount);
         emit Collect(_sustainer, _amount);
     }
