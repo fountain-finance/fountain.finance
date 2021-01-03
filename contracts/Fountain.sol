@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
 import "./libraries/MoneyPool.sol";
-import "./interfaces/IFountainV1.sol";
+import "./interfaces/IFountain.sol";
 
 /**
 
@@ -32,7 +32,7 @@ The basin of the Fountain should always be the sustainers of projects.
 */
 
 /// @notice The contract managing the state of all Money pools.
-contract FountainV1 is IFountainV1 {
+contract Fountain is IFountain {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
     using MoneyPool for MoneyPool.Data;
