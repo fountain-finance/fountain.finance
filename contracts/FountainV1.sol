@@ -7,6 +7,8 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 
 import "./interfaces/IFountainV1.sol";
 
+import "./libraries/Math.sol";
+
 /**
 
 @title Fountain
@@ -53,8 +55,8 @@ contract FountainV1 is IFountainV1 {
         uint256 start;
         // The number of seconds until this Money pool's surplus is redistributed.
         uint256 duration;
-        // The amount of available funds that have been tapped by the owner.
-        uint256 tapped;
+        // The amount of available funds that have been collected by the owner.
+        uint256 sustainmentCollected;
         // Helper to verify this Money pool exists.
         bool exists;
         // Indicates if surplus funds have been redistributed for each sustainer address.
@@ -241,7 +243,7 @@ contract FountainV1 is IFountainV1 {
         returns (uint256)
     {
         MoneyPool storage _mp = mps[_mpId];
-        return _tappableAmount(_mp);
+        return _sustainmentAvailable(_mp);
     }
 
     /// @dev The amount of sustainments in a Money pool that were contributed by the given address.
@@ -290,7 +292,7 @@ contract FountainV1 is IFountainV1 {
     ) external override returns (uint256) {
         require(
             _duration >= 1,
-            "Fountain::configureMp: A Money Pool must be at least one day long"
+            "Fountain::configureMp: A Money Pool must be at least second day long"
         );
         require(
             _target > 0,
@@ -371,7 +373,7 @@ contract FountainV1 is IFountainV1 {
     /// @param _mpId The ID of the Money pool to tap.
     /// @param _amount The amount to tap.
     /// @return success If the collecting was a success.
-    function collectSustainments(uint256 _mpId, uint256 _amount)
+    function collectSustainment(uint256 _mpId, uint256 _amount)
         external
         override
         lockCollectSustainment
@@ -382,7 +384,7 @@ contract FountainV1 is IFountainV1 {
             _mp.owner == msg.sender,
             "Fountain::collectSustainments: Money pools can only be tapped by their owner"
         );
-        _tap(_mp, _amount);
+        _collectSustainment(_mp, _amount);
 
         _mp.want.safeTransfer(msg.sender, _amount);
         emit CollectSustainments(_mpId, msg.sender, _amount, _mp.want);
@@ -542,7 +544,7 @@ contract FountainV1 is IFountainV1 {
         return _createMpFromId(_mpId, _start);
     }
 
-    /// @dev Take the amount that should be redistributed to the given sustainer by the given owner's Money pools.
+    /// @dev Record the redistribution the amount that should be redistributed to the given sustainer by the given owners' Money pools.
     /// @param _sustainer The sustainer address to redistribute to.
     /// @param _owners The Money pool owners to redistribute from.
     /// @return _amount The amount that has been redistributed.
@@ -557,7 +559,7 @@ contract FountainV1 is IFountainV1 {
         return _amount;
     }
 
-    /// @dev Take the amount that should be redistributed to the given sustainer by the given owner's Money pools.
+    /// @dev Record the redistribution the amount that should be redistributed to the given sustainer by the given owner's Money pools.
     /// @param _sustainer The sustainer address to redistribute to.
     /// @param _owner The Money pool owner to redistribute from.
     /// @return _amount The amount that has been redistributed.
@@ -569,7 +571,7 @@ contract FountainV1 is IFountainV1 {
         uint256 _mpId = latestMpIds[_owner];
         require(
             _mpId > 0,
-            "Fountain::_getRedistributionAmount: Money Pool not found"
+            "Fountain::_redistributeAmount: Money Pool not found"
         );
         MoneyPool storage _mp = mps[_mpId];
 
@@ -596,16 +598,17 @@ contract FountainV1 is IFountainV1 {
         return _amount;
     }
 
-    /// @dev Take the amount that should be redistributed to the given sustainer by the given owner's Money pools.
+    /// @dev Increase the amount that has been collected by the Money pool's owner. that should be c.
     /// @param _mp The Money pool to tap.
     /// @param _amount The amount to tap.
-    function _tap(MoneyPool storage _mp, uint256 _amount) private {
-        uint256 _mpAmountTappable = _tappableAmount(_mp);
+    function _collectSustainment(MoneyPool storage _mp, uint256 _amount)
+        private
+    {
         require(
-            _mpAmountTappable >= _amount,
-            "Fountain::_tap: Not enough to tap"
+            _sustainmentAvailable(_mp) >= _amount,
+            "Fountain::_collectSustainment: Not enough to collect"
         );
-        _mp.tapped = _mp.tapped.add(_amount);
+        _mp.sustainmentCollected = _mp.sustainmentCollected.add(_amount);
     }
 
     /// @dev Returns a copy of the given Money pool with reset sustainments.
@@ -637,7 +640,7 @@ contract FountainV1 is IFountainV1 {
         MoneyPool storage _newMp = mps[mpCount];
         _newMp.owner = _owner;
         _newMp.total = 0;
-        _newMp.tapped = 0;
+        _newMp.sustainmentCollected = 0;
         _newMp.exists = true;
         _newMp.version = 1;
 
@@ -659,7 +662,7 @@ contract FountainV1 is IFountainV1 {
         MoneyPool storage _mp = mps[_mpId];
 
         // Return 0 if there's no surplus.
-        if (!_mp.exists || _mp.target >= _mp.total) return 0;
+        if (!_mp.exists || _mp.total < _mp.target) return 0;
 
         uint256 surplus = _mp.total.sub(_mp.target);
 
@@ -729,16 +732,15 @@ contract FountainV1 is IFountainV1 {
         return now > _mp.start.add(_mp.duration);
     }
 
-    /// @dev Returns the amount available for the given Money pool's owner to tap in to.
+    /// @dev Returns the amount available for the given Money pool's owner to collect.
     /// @param _mp The Money pool to make the calculation for.
     /// @return The resulting amount.
-    function _tappableAmount(MoneyPool storage _mp)
+    function _sustainmentAvailable(MoneyPool storage _mp)
         private
         view
         returns (uint256)
     {
-        return
-            (_mp.target > _mp.total ? _mp.total : _mp.target).sub(_mp.tapped);
+        return Math.min(_mp.target, _mp.total).sub(_mp.sustainmentCollected);
     }
 
     /// @dev Returns the date that is the nearest multiple of duration from oldEnd.
