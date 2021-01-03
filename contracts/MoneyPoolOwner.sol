@@ -31,9 +31,10 @@ abstract contract MoneyPoolOwner is Ownable {
     }
 
     /** 
-        @notice This allows you to reset the Fountain contract you're using.
-        @dev Useful incase you need to switch to an updated Fountain contract
+        @notice This allows you to reset the Fountain contract that's running your Money pool.
+        @dev Useful in case you need to switch to an updated Fountain contract
         without redeploying your contract.
+        @dev You should also set the Fountain for the first time in your constructor.
         @param _newFountain The new Fountain contract.
     */
     function setFountain(IFountain _newFountain) public virtual onlyOwner {
