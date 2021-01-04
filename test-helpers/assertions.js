@@ -1,7 +1,7 @@
 const truffleAssert = require("truffle-assertions");
 
 exports.assertMoneyPoolCount = async (instance, count, message) => {
-  const currentCount = (await instance.mpCount()).toNumber();
+  const currentCount = (await instance.mpChain()).toNumber();
   assert.equal(currentCount, count, message);
 };
 
@@ -37,7 +37,7 @@ exports.assertConfigureMoneyPoolEvent = async (
   want,
   message
 ) => {
-  const currentCount = (await instance.mpCount()).toString();
+  const currentCount = (await instance.mpChain()).toString();
   truffleAssert.eventEmitted(tx, "ConfigureMp", (ev) => {
     return (
       ev.mpNumber.toString() === currentCount &&
@@ -58,7 +58,7 @@ exports.assertSustainMoneyPoolEvent = async (
   amount,
   message
 ) => {
-  const currentCount = (await instance.mpCount()).toString();
+  const currentCount = (await instance.mpChain()).toString();
   truffleAssert.eventEmitted(tx, "SustainMp", (ev) => {
     return (
       ev.mpNumber.toString() === currentCount &&
@@ -77,9 +77,14 @@ exports.assertBalance = async (
   message,
   from
 ) => {
+  console.log({
+    c: (await instance.mpChain())
+    // k: 
+    //   (await (await instance.mpChain()).latestNumber(address))).toNumber()
+  });
   const currentSustainment = (
     await instance.getMp(
-      (await instance.latestMpNumber(address)).toNumber(), {
+      (await instance.mpChain.latestNumber(address)).toNumber(), {
         from: from || address
       }
     )

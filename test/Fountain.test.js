@@ -33,7 +33,10 @@ contract("Fountain", ([owner, creator, sustainer, beneficiary]) => {
     });
 
     it("initially has no MoneyPools", async () => {
-      assert.equal(await fountain.mpCount(), 0);
+      console.log({
+        chain: (await fountain.mpChain()).toNumber()
+      })
+      assert.equal((await fountain.mpChain()).toNumber(), 0);
     });
 
     it("stores expected address for DAI", async () => {

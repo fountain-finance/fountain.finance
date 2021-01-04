@@ -29,15 +29,10 @@ library MoneyPool {
         // The time when this Money pool will become active.
         uint256 start;
         // The number of seconds until this Money pool's surplus is redistributed.
+        // This number must be greater than 0. A Money pool of duration 0 doesn't exist.
         uint256 duration;
         // The amount of available funds that have been tapped by the owner.
         uint256 tapped;
-        // Helper to verify this Money pool exists.
-        bool exists;
-        // Indicates if surplus funds have been redistributed for each sustainer address.
-        mapping(address => bool) hasRedistributed;
-        // The amount each address has contributed to sustaining this Money pool.
-        mapping(address => uint256) sustainments;
         // The Money pool's version.
         uint8 version;
     }
@@ -62,7 +57,6 @@ library MoneyPool {
         self.start = _start;
         self.total = 0;
         self.tapped = 0;
-        self.exists = true;
         self.version = 1;
     }
 
@@ -83,27 +77,6 @@ library MoneyPool {
         self.target = _target;
         self.duration = _duration;
         self.want = _want;
-    }
-
-    /** 
-        @notice Contribute a specified amount to the sustainability of the specified address's active Money pool.
-        If the amount results in surplus, redistribute the surplus proportionally to sustainers of the Money pool.
-        @param self The Money pool to sustain.
-        @param _amount Amount of sustainment.
-        @param _beneficiary The address to associate with this sustainment. The mes.sender is making this sustainment on the beneficiary's behalf.
-    */
-    function _sustain(
-        Data storage self,
-        uint256 _amount,
-        address _beneficiary
-    ) internal {
-        // Increment the sustainments to the Money pool made by the message sender.
-        self.sustainments[_beneficiary] = self.sustainments[_beneficiary].add(
-            _amount
-        );
-
-        // Increment the total amount contributed to the sustainment of the Money pool.
-        self.total = self.total.add(_amount);
     }
 
     /** 
@@ -141,47 +114,10 @@ library MoneyPool {
     }
 
     /** 
-        @notice Returns the amount available for the given Money pool's owner to tap in to.
-        @param self The Money pool to make the calculation for.
-        @return The resulting amount.
-    */
-    function _tappableAmount(Data storage self)
-        internal
-        view
-        returns (uint256)
-    {
-        return Math.min(self.target, self.total).sub(self.tapped);
-    }
-
-    /** 
-        @notice The amount of redistribution in a Money pool that can be claimed by the given address.
-        @param self The Money pool to get a redistribution amount for.
-        @param _sustainer The address of the sustainer to get an amount for.
-        @return amount The amount.
-    */
-    function _trackedRedistribution(Data storage self, address _sustainer)
-        internal
-        view
-        returns (uint256)
-    {
-        // Return 0 if there's no surplus.
-        if (self.total < self.target) return 0;
-
-        uint256 _surplus = self.total.sub(self.target);
-
-        // Calculate their share of the sustainment for the the given sustainer.
-        // allocate a proportional share of the surplus, overwriting any previous value.
-        uint256 _proportionOfTotal =
-            self.sustainments[_sustainer].div(self.total);
-
-        return _surplus.mul(_proportionOfTotal);
-    }
-
-    /** 
         @notice Returns the date that is the nearest multiple of duration from oldEnd.
         @return start The date.
     */
-    function _determineNextStart(Data storage self)
+    function _determineNextStart(Data memory self)
         internal
         view
         returns (uint256)
@@ -192,6 +128,15 @@ library MoneyPool {
         // Otherwise, use the closest multiple of the duration from the old end.
         uint256 _distanceToStart = (now.sub(_end)).mod(self.duration);
         return now.sub(_distanceToStart);
+    }
+
+    /** 
+        @notice Returns the amount available for the given Money pool's owner to tap in to.
+        @param self The Money pool to make the calculation for.
+        @return The resulting amount.
+    */
+    function _tappableAmount(Data memory self) internal pure returns (uint256) {
+        return Math.min(self.target, self.total).sub(self.tapped);
     }
 
     // --- private views --- //
@@ -212,37 +157,5 @@ library MoneyPool {
     */
     function _hasExpired(Data memory self) private view returns (bool) {
         return now > self.start.add(self.duration);
-    }
-
-    /** 
-        @notice The properties of the given Money pool.
-        @param self The Money pool to get the properties of.
-        @return number The number of the Money pool.
-        @return want The token the Money pool wants.
-        @return target The amount of the want token this Money pool is targeting.
-        @return start The time when this Money pool started.
-        @return duration The duration of this Money pool, measured in seconds.
-        @return total The total amount passed through the Money pool. Returns 0 if the Money pool isn't owned by the message sender.
-    */
-    function _properties(Data memory self)
-        internal
-        pure
-        returns (
-            uint256,
-            IERC20,
-            uint256,
-            uint256,
-            uint256,
-            uint256
-        )
-    {
-        return (
-            self.number,
-            self.want,
-            self.target,
-            self.start,
-            self.duration,
-            self.total
-        );
     }
 }
