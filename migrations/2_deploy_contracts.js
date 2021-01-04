@@ -1,4 +1,4 @@
-const Fountain = artifacts.require("FountainV1");
+const Fountain = artifacts.require("Fountain");
 
 // Dynamically obtain DAI contract address based on deployment network (mainnet address is different than ropsten)
 const DAI = {
