@@ -5,21 +5,21 @@ pragma experimental ABIEncoderV2;
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 import "./interfaces/IMpChain.sol";
-import "./libraries/MoneyPool.sol";
+import "./libraries/MoneyPoolV1.sol";
 
-contract MpChain is IMpChain, Ownable {
+contract MpChainV1 is IMpChain, Ownable {
     using SafeMath for uint256;
-    using MoneyPool for MoneyPool.Data;
+    using MoneyPoolV1 for MoneyPoolV1.Data;
 
     // --- private properties --- //
 
     // The official record of all Money pools ever created.
-    mapping(uint256 => MoneyPool.Data) private get;
-
-    // The previous chain, if there is one.
-    MpChain private previous;
+    mapping(uint256 => MoneyPoolV1.Data) private get;
 
     // --- public properties --- //
+
+    // The previous Money pool chain, if there is one.
+    IMpChain public override previousMpChain;
 
     /// @notice A mapping from Money pool number's the the numbers of the previous Money pool for the same owner.
     mapping(uint256 => uint256) public override previousNumber;
@@ -51,8 +51,7 @@ contract MpChain is IMpChain, Ownable {
     function mp(uint256 _number)
         external
         view
-        override
-        returns (MoneyPool.Data memory _mp)
+        returns (MoneyPoolV1.Data memory _mp)
     {
         _mp = get[_number];
         require(_mp.number > 0, "MpChain::mp: Money pool not found");
@@ -66,8 +65,7 @@ contract MpChain is IMpChain, Ownable {
     function upcomingMp(address _owner)
         external
         view
-        override
-        returns (MoneyPool.Data memory _mp)
+        returns (MoneyPoolV1.Data memory _mp)
     {
         _mp = _upcomingMp(_owner);
         require(_mp.number > 0, "MpChain::getUpcomingMp: Money pool not found");
@@ -82,8 +80,7 @@ contract MpChain is IMpChain, Ownable {
     function activeMp(address _owner)
         external
         view
-        override
-        returns (MoneyPool.Data memory _mp)
+        returns (MoneyPoolV1.Data memory _mp)
     {
         _mp = _activeMp(_owner);
         require(_mp.number > 0, "MpChain::getActiveMp: Money pool not found");
@@ -99,8 +96,7 @@ contract MpChain is IMpChain, Ownable {
     function latestMp(address _owner)
         external
         view
-        override
-        returns (MoneyPool.Data memory _mp)
+        returns (MoneyPoolV1.Data memory _mp)
     {
         _mp = _latestMp(_owner);
         require(_mp.number > 0, "MpChain::getLatestMp: Money pool not found");
@@ -115,8 +111,7 @@ contract MpChain is IMpChain, Ownable {
     function previousMp(uint256 _number)
         external
         view
-        override
-        returns (MoneyPool.Data memory)
+        returns (MoneyPoolV1.Data memory)
     {
         return get[previousNumber[_number]];
     }
@@ -126,12 +121,7 @@ contract MpChain is IMpChain, Ownable {
         @param _number The number of the Money pool to get the available sustainment from.
         @return amount The amount.
     */
-    function tappableAmount(uint256 _number)
-        external
-        view
-        override
-        returns (uint256)
-    {
+    function tappableAmount(uint256 _number) external view returns (uint256) {
         return get[_number]._tappableAmount();
     }
 
@@ -150,9 +140,22 @@ contract MpChain is IMpChain, Ownable {
         return _trackedRedistribution(_number, _sustainer);
     }
 
+    function canRedistribute(uint256 _number)
+        external
+        view
+        override
+        returns (bool)
+    {
+        return get[_number]._state() == MoneyPoolV1.State.Redistributing;
+    }
+
+    function want(uint256 _number) external view override returns (IERC20) {
+        return get[_number].want;
+    }
+
     // --- external transactions --- //
 
-    constructor() internal {
+    constructor() public {
         length = 0;
     }
 
@@ -161,19 +164,22 @@ contract MpChain is IMpChain, Ownable {
         uint256 _target,
         uint256 _duration,
         IERC20 _want
-    ) external override onlyOwner returns (MoneyPool.Data memory) {
-        MoneyPool.Data storage _mp = _mpToConfigure(_owner);
+    ) external override onlyOwner returns (uint256) {
+        MoneyPoolV1.Data storage _mp = _mpToConfigure(_owner);
         _mp._configure(_target, _duration, _want);
-        return _mp;
+        return _mp.number;
     }
 
     function sustain(
         address _owner,
         uint256 _amount,
         address _beneficiary
-    ) external override onlyOwner returns (MoneyPool.Data memory) {
+    ) external override onlyOwner returns (uint256) {
         // Find the Money pool that this sustainment should go to.
-        MoneyPool.Data storage _mp = _mpToSustain(_owner);
+        MoneyPoolV1.Data storage _mp = _mpToSustain(_owner);
+
+        if (_mp.number == 0 && previousMpChain != IMpChain(0))
+            return previousMpChain.sustain(_owner, _amount, _beneficiary);
 
         // Increment the sustainments to the Money pool made by the message sender.
         sustainments[_mp.number][_beneficiary] = sustainments[_mp.number][
@@ -184,15 +190,19 @@ contract MpChain is IMpChain, Ownable {
         // Increment the total amount contributed to the sustainment of the Money pool.
         _mp.total = _mp.total.add(_amount);
 
-        return _mp;
+        return _mp.number;
     }
 
     function tap(
         uint256 _number,
         address _owner,
         uint256 _amount
-    ) external override onlyOwner returns (MoneyPool.Data memory) {
-        MoneyPool.Data storage _mp = get[_number];
+    ) external override onlyOwner returns (bool) {
+        MoneyPoolV1.Data storage _mp = get[_number];
+
+        if (_mp.number == 0 && previousMpChain != IMpChain(0))
+            return previousMpChain.tap(_number, _owner, _amount);
+
         require(
             _mp.owner == _owner,
             "MpChain::tap: A Money pool can only be tapped by its owner"
@@ -203,6 +213,8 @@ contract MpChain is IMpChain, Ownable {
         );
 
         _mp._tap(_amount);
+
+        return true;
     }
 
     function markAsRedistributed(uint256 _number, address _sustainer)
@@ -211,6 +223,10 @@ contract MpChain is IMpChain, Ownable {
         onlyOwner
     {
         hasRedistributed[_number][_sustainer] = true;
+    }
+
+    function setPreviousMpChain(IMpChain _mpChain) external override onlyOwner {
+        previousMpChain = _mpChain;
     }
 
     // --- private transactions --- //
@@ -226,7 +242,7 @@ contract MpChain is IMpChain, Ownable {
         view
         returns (uint256)
     {
-        MoneyPool.Data memory _mp = get[_mpNumber];
+        MoneyPoolV1.Data memory _mp = get[_mpNumber];
         // Return 0 if there's no surplus.
         if (_mp.duration == 0 || _mp.total <= _mp.target) return 0;
 
@@ -250,7 +266,7 @@ contract MpChain is IMpChain, Ownable {
     */
     function _mpToConfigure(address _owner)
         private
-        returns (MoneyPool.Data storage _mp)
+        returns (MoneyPoolV1.Data storage _mp)
     {
         // Allow active moneyPool to be updated if it has no sustainments
         _mp = _activeMp(_owner);
@@ -263,7 +279,7 @@ contract MpChain is IMpChain, Ownable {
         // No upcoming moneyPool found, clone the latest moneyPool
         _mp = _latestMp(_owner);
 
-        MoneyPool.Data storage _newMp = _initMp(_owner, now);
+        MoneyPoolV1.Data storage _newMp = _initMp(_owner, now);
         if (_mp.duration > 0) _newMp._clone(_mp);
         return _newMp;
     }
@@ -276,7 +292,7 @@ contract MpChain is IMpChain, Ownable {
     */
     function _mpToSustain(address _owner)
         private
-        returns (MoneyPool.Data storage _mp)
+        returns (MoneyPoolV1.Data storage _mp)
     {
         // Check if there is an active moneyPool
         _mp = _activeMp(_owner);
@@ -296,7 +312,7 @@ contract MpChain is IMpChain, Ownable {
 
         // Use a start date that's a multiple of the duration.
         // This creates the effect that there have been scheduled Money pools ever since the `latest`, even if `latest` is a long time in the past.
-        MoneyPool.Data storage _newMp =
+        MoneyPoolV1.Data storage _newMp =
             _initMp(_mp.owner, _mp._determineNextStart());
         _newMp._clone(_mp);
         return _newMp;
@@ -310,7 +326,7 @@ contract MpChain is IMpChain, Ownable {
     */
     function _initMp(address _owner, uint256 _start)
         private
-        returns (MoneyPool.Data storage _newMp)
+        returns (MoneyPoolV1.Data storage _newMp)
     {
         length++;
         _newMp = get[length];
@@ -329,17 +345,17 @@ contract MpChain is IMpChain, Ownable {
     function _activeMp(address _owner)
         private
         view
-        returns (MoneyPool.Data storage _mp)
+        returns (MoneyPoolV1.Data storage _mp)
     {
         _mp = _latestMp(_owner);
         if (_mp.duration == 0) return get[0];
 
         // An Active moneyPool must be either the latest moneyPool or the
         // moneyPool immediately before it.
-        if (_mp._state() == MoneyPool.State.Active) return _mp;
+        if (_mp._state() == MoneyPoolV1.State.Active) return _mp;
 
         _mp = get[previousNumber[_mp.number]];
-        if (_mp.duration > 0 && _mp._state() == MoneyPool.State.Active)
+        if (_mp.duration > 0 && _mp._state() == MoneyPoolV1.State.Active)
             return _mp;
 
         return get[0];
@@ -353,13 +369,13 @@ contract MpChain is IMpChain, Ownable {
     function _upcomingMp(address _owner)
         private
         view
-        returns (MoneyPool.Data storage _mp)
+        returns (MoneyPoolV1.Data storage _mp)
     {
         _mp = _latestMp(_owner);
         if (_mp.duration == 0) return get[0];
 
         // There is no upcoming Money pool if the latest Money pool is not upcoming
-        if (_mp._state() != MoneyPool.State.Upcoming) return get[0];
+        if (_mp._state() != MoneyPoolV1.State.Upcoming) return get[0];
         return _mp;
     }
 
@@ -372,7 +388,7 @@ contract MpChain is IMpChain, Ownable {
     function _latestMp(address _owner)
         private
         view
-        returns (MoneyPool.Data storage _mp)
+        returns (MoneyPoolV1.Data storage _mp)
     {
         return get[latestNumber[_owner]];
     }

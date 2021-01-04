@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
-import "./MpChain.sol";
+import "./interfaces/IMpChain.sol";
 import "./interfaces/IFountain.sol";
 
 /**
@@ -38,7 +38,6 @@ The basin of the Fountain should always be the sustainers of projects.
 contract Fountain is IFountain {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
-    using MoneyPool for MoneyPool.Data;
 
     /// @dev Wrap the sustain and collect transactions in unique locks to prevent reentrency.
     uint8 private lock1 = 1;
@@ -65,7 +64,9 @@ contract Fountain is IFountain {
 
     // --- private properties --- //
 
-    MpChain private mpChain;
+    IMpChain private mpChain;
+
+    mapping(IMpChain => IMpChain) private previousMpChain;
 
     /// @dev List of owners contributed to by each sustainer.
     /// @dev This is used to redistribute surplus economically.
@@ -116,7 +117,11 @@ contract Fountain is IFountain {
 
     constructor(IERC20 _dai) public {
         dai = _dai;
-        mpChain = new MpChain();
+    }
+
+    function updateMpChain(IMpChain _mpChain) external {
+        previousMpChain[_mpChain] = mpChain;
+        mpChain = _mpChain;
     }
 
     /**
@@ -125,13 +130,13 @@ contract Fountain is IFountain {
         @param _target The sustainability target to set.
         @param _duration The duration to set, measured in seconds.
         @param _want The token that the Money pool wants.
-        @return _mp The Money pool that was successfully configured.
+        @return _mpNumber The number of the Money pool that was successfully configured.
     */
     function configure(
         uint256 _target,
         uint256 _duration,
         IERC20 _want
-    ) external override returns (MoneyPool.Data memory _mp) {
+    ) external override returns (uint256 _mpNumber) {
         require(
             _duration >= 1,
             "Fountain::configureMp: A Money Pool must be at least one second long"
@@ -145,15 +150,9 @@ contract Fountain is IFountain {
             "Fountain::configureMp: A Money Pool target must be a positive number"
         );
 
-        _mp = mpChain.configure(msg.sender, _target, _duration, _want);
+        _mpNumber = mpChain.configure(msg.sender, _target, _duration, _want);
 
-        emit Configure(
-            _mp.number,
-            _mp.owner,
-            _mp.target,
-            _mp.duration,
-            _mp.want
-        );
+        emit Configure(_mpNumber, msg.sender, _target, _duration, _want);
     }
 
     /** 
@@ -161,20 +160,25 @@ contract Fountain is IFountain {
         @param _owner The owner of the Money pool to sustain.
         @param _amount Amount of sustainment.
         @param _beneficiary The address to associate with this sustainment. This is usually mes.sender, but can be something else if the sender is making this sustainment on the beneficiary's behalf.
-        @return _mp The Money pool that was successfully sustained.
+        @return _mpNumber The number of the Money pool that was successfully sustained.
     */
     function sustain(
         address _owner,
         uint256 _amount,
         address _beneficiary
-    ) external override lockSustain returns (MoneyPool.Data memory _mp) {
+    ) external override lockSustain returns (uint256 _mpNumber) {
         require(
             _amount > 0,
             "Fountain::sustain: The sustainment amount should be positive"
         );
 
-        _mp = mpChain.sustain(_owner, _amount, _beneficiary);
-        _mp.want.safeTransferFrom(msg.sender, address(this), _amount);
+        _mpNumber = mpChain.sustain(_owner, _amount, _beneficiary);
+
+        mpChain.want(_mpNumber).safeTransferFrom(
+            msg.sender,
+            address(this),
+            _amount
+        );
 
         // Add this address to the sustainer's list of sustained owners
         if (sustainedOwnerTracker[_beneficiary][_owner] == false) {
@@ -182,7 +186,26 @@ contract Fountain is IFountain {
             sustainedOwnerTracker[_beneficiary][_owner] == true;
         }
 
-        emit Sustain(_mp.number, _mp.owner, _beneficiary, msg.sender, _amount);
+        emit Sustain(_mpNumber, _owner, _beneficiary, msg.sender, _amount);
+    }
+
+    /**
+        @notice A message sender can tap into funds that have been used to sustain it's Money pools.
+        @param _mpNumber The number of the Money pool to tap.
+        @param _amount The amount to tap.
+        @param _beneficiary The address to transfer the funds to.
+        @return success If the collecting was a success.
+    */
+    function tap(
+        uint256 _mpNumber,
+        uint256 _amount,
+        address _beneficiary
+    ) external override lockTap returns (bool) {
+        mpChain.tap(_mpNumber, msg.sender, _amount);
+        IERC20 _want = mpChain.want(_mpNumber);
+        _want.safeTransfer(_beneficiary, _amount);
+        emit Tap(_mpNumber, msg.sender, _beneficiary, _amount, _want);
+        return true;
     }
 
     /** 
@@ -236,24 +259,6 @@ contract Fountain is IFountain {
         return _amount;
     }
 
-    /**
-        @notice A message sender can tap into funds that have been used to sustain it's Money pools.
-        @param _mpNumber The number of the Money pool to tap.
-        @param _amount The amount to tap.
-        @param _beneficiary The address to transfer the funds to.
-        @return success If the collecting was a success.
-    */
-    function tap(
-        uint256 _mpNumber,
-        uint256 _amount,
-        address _beneficiary
-    ) external override lockTap returns (bool) {
-        MoneyPool.Data memory _mp = mpChain.tap(_mpNumber, msg.sender, _amount);
-        _mp.want.safeTransfer(_beneficiary, _amount);
-        emit Tap(_mpNumber, msg.sender, _beneficiary, _amount, _mp.want);
-        return true;
-    }
-
     // --- private transactions --- //
 
     /** 
@@ -293,23 +298,28 @@ contract Fountain is IFountain {
         returns (uint256)
     {
         uint256 _amount = 0;
-        MoneyPool.Data memory _mp = mpChain.latestMp(_owner);
+        IMpChain _mpChain = mpChain;
+        uint256 _mpNumber = _mpChain.latestNumber(_owner);
 
         require(
-            _mp.number > 0,
+            _mpNumber > 0,
             "Fountain::_redistributeAmount: Money Pool not found"
         );
 
         while (
-            _mp.number > 0 && !mpChain.hasRedistributed(_mp.number, _sustainer)
+            _mpNumber > 0 && !_mpChain.hasRedistributed(_mpNumber, _sustainer)
         ) {
-            if (_mp._state() == MoneyPool.State.Redistributing) {
+            if (_mpChain.canRedistribute(_mpNumber)) {
                 _amount = _amount.add(
-                    mpChain.trackedRedistribution(_mp.number, _sustainer)
+                    _mpChain.trackedRedistribution(_mpNumber, _sustainer)
                 );
-                mpChain.markAsRedistributed(_mp.number, _sustainer);
+                _mpChain.markAsRedistributed(_mpNumber, _sustainer);
             }
-            _mp = mpChain.previousMp(_mp.number);
+            _mpNumber = _mpChain.previousNumber(_mpNumber);
+            if (_mpNumber == 0) {
+                _mpChain = _mpChain.previousMpChain();
+                _mpNumber = _mpChain.latestNumber(_owner);
+            }
         }
 
         return _amount;

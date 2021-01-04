@@ -33,13 +33,13 @@ interface IFountain {
         uint256 _target,
         uint256 _duration,
         IERC20 _want
-    ) external returns (MoneyPool.Data memory _mp);
+    ) external returns (uint256 _mpNumber);
 
     function sustain(
         address _owner,
         uint256 _amount,
         address _beneficiary
-    ) external returns (MoneyPool.Data memory _mp);
+    ) external returns (uint256 _mpNumber);
 
     function collectAll() external returns (uint256 _amount);
 

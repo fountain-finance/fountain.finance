@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "./Math.sol";
 
 /// @notice Logic to manipulate MoneyPool data.
-library MoneyPool {
+library MoneyPoolV1 {
     using SafeMath for uint256;
 
     /// @notice Possible states that a Money pool may be in
@@ -33,8 +33,6 @@ library MoneyPool {
         uint256 duration;
         // The amount of available funds that have been tapped by the owner.
         uint256 tapped;
-        // The Money pool's version.
-        uint8 version;
     }
 
     // --- internal transactions --- //
@@ -57,7 +55,6 @@ library MoneyPool {
         self.start = _start;
         self.total = 0;
         self.tapped = 0;
-        self.version = 1;
     }
 
     /** 
