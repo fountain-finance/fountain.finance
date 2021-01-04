@@ -146,7 +146,10 @@ contract Fountain is IFountain {
         )
     {
         MoneyPool.Data memory _mp = mps[_mpNumber];
-        require(_mp.exists, "Fountain::_mpProperties: Money pool not found");
+        require(
+            _mp.number > 0,
+            "Fountain::_mpProperties: Money pool not found"
+        );
         return _mp._properties();
     }
 
@@ -174,7 +177,10 @@ contract Fountain is IFountain {
         )
     {
         MoneyPool.Data memory _mp = _upcomingMp(_owner);
-        require(_mp.exists, "Fountain::_mpProperties: Money pool not found");
+        require(
+            _mp.number > 0,
+            "Fountain::_mpProperties: Money pool not found"
+        );
         return _mp._properties();
     }
 
@@ -202,7 +208,10 @@ contract Fountain is IFountain {
         )
     {
         MoneyPool.Data memory _mp = _activeMp(_owner);
-        require(_mp.exists, "Fountain::_mpProperties: Money pool not found");
+        require(
+            _mp.number > 0,
+            "Fountain::_mpProperties: Money pool not found"
+        );
         return _mp._properties();
     }
 
@@ -249,7 +258,7 @@ contract Fountain is IFountain {
     {
         MoneyPool.Data storage _mp = mps[_mpNumber];
         require(
-            _mp.exists,
+            _mp.number > 0,
             "Fountain::getTrackedRedistribution:: Money Pool not found"
         );
         return _mp._trackedRedistribution(_sustainer);
@@ -442,17 +451,17 @@ contract Fountain is IFountain {
     {
         // Allow active moneyPool to be updated if it has no sustainments
         _mp = _activeMp(_owner);
-        if (_mp.exists && _mp.total == 0) return _mp;
+        if (_mp.number > 0 && _mp.total == 0) return _mp;
 
         // Cannot update active moneyPool, check if there is a upcoming moneyPool
         _mp = _upcomingMp(_owner);
-        if (_mp.exists) return _mp;
+        if (_mp.number > 0) return _mp;
 
         // No upcoming moneyPool found, clone the latest moneyPool
         _mp = mps[latestMpNumber[_owner]];
 
         MoneyPool.Data storage _newMp = _initMp(_owner, now);
-        if (_mp.exists) _newMp._clone(_mp);
+        if (_mp.number > 0) _newMp._clone(_mp);
         return _newMp;
     }
 
@@ -468,17 +477,17 @@ contract Fountain is IFountain {
     {
         // Check if there is an active moneyPool
         _mp = _activeMp(_owner);
-        if (_mp.exists) return _mp;
+        if (_mp.number > 0) return _mp;
 
         // No active moneyPool found, check if there is an upcoming moneyPool
         _mp = _upcomingMp(_owner);
-        if (_mp.exists) return _mp;
+        if (_mp.number > 0) return _mp;
 
         // No upcoming moneyPool found, clone the latest moneyPool
         _mp = mps[latestMpNumber[_owner]];
 
         require(
-            _mp.exists,
+            _mp.number > 0,
             "Fountain::_mpToSustain: This owner has no Money pools"
         );
 
@@ -521,7 +530,7 @@ contract Fountain is IFountain {
         uint256 _mpNumber = latestMpNumber[_owner];
         MoneyPool.Data storage _mp = mps[_mpNumber];
         require(
-            _mp.exists,
+            _mp.number > 0,
             "Fountain::_redistributeAmount: Money Pool not found"
         );
 
@@ -534,7 +543,7 @@ contract Fountain is IFountain {
         // Short circuits by testing `moneyPool.hasRedistributed` to limit number
         // of iterations since all previous Money pools must have already been
         // redistributed.
-        while (_mp.exists && !_mp.hasRedistributed[_sustainer]) {
+        while (_mp.number > 0 && !_mp.hasRedistributed[_sustainer]) {
             if (_mp._state() == MoneyPool.State.Redistributing) {
                 _amount = _amount.add(_mp._trackedRedistribution(_sustainer));
                 _mp.hasRedistributed[_sustainer] = true;
@@ -576,14 +585,15 @@ contract Fountain is IFountain {
         returns (MoneyPool.Data storage _mp)
     {
         _mp = mps[latestMpNumber[_owner]];
-        if (!_mp.exists) return mps[0];
+        if (_mp.number == 0) return mps[0];
 
         // An Active moneyPool must be either the latest moneyPool or the
         // moneyPool immediately before it.
         if (_mp._state() == MoneyPool.State.Active) return _mp;
 
         _mp = mps[previousMpNumber[_mp.number]];
-        if (_mp.exists && _mp._state() == MoneyPool.State.Active) return _mp;
+        if (_mp.number > 0 && _mp._state() == MoneyPool.State.Active)
+            return _mp;
 
         return mps[0];
     }
@@ -599,7 +609,7 @@ contract Fountain is IFountain {
         returns (MoneyPool.Data storage _mp)
     {
         _mp = mps[latestMpNumber[_owner]];
-        if (!_mp.exists) return mps[0];
+        if (_mp.number == 0) return mps[0];
 
         // There is no upcoming Money pool if the latest Money pool is not upcoming
         if (_mp._state() != MoneyPool.State.Upcoming) return mps[0];

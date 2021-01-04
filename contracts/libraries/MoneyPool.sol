@@ -32,14 +32,10 @@ library MoneyPool {
         uint256 duration;
         // The amount of available funds that have been tapped by the owner.
         uint256 tapped;
-        // Helper to verify this Money pool exists.
-        bool exists;
         // Indicates if surplus funds have been redistributed for each sustainer address.
         mapping(address => bool) hasRedistributed;
         // The amount each address has contributed to sustaining this Money pool.
         mapping(address => uint256) sustainments;
-        // The Money pool's version.
-        uint8 version;
     }
 
     // --- internal transactions --- //
@@ -62,8 +58,6 @@ library MoneyPool {
         self.start = _start;
         self.total = 0;
         self.tapped = 0;
-        self.exists = true;
-        self.version = 1;
     }
 
     /** 
