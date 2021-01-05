@@ -148,10 +148,18 @@ contract Fountain is IFountain {
         )
     {
         MoneyPool.Data memory _mp = _upcomingMp(_owner);
-        require(
-            _mp.number > 0 && _activeMp(_owner).number > 0,
-            "Fountain::getUpcomingMp: NOT_FOUND"
-        );
+        require(_mp.number > 0, "Fountain::getUpcomingMp: NOT_FOUND");
+        if (_activeMp(_owner).number > 0) {
+            return (
+                mpCount + 1,
+                _mp.owner,
+                _mp.want,
+                _mp.target,
+                _mp._determineNextStart(),
+                _mp.duration,
+                0
+            );
+        }
         return _mp._properties();
     }
 
