@@ -94,6 +94,6 @@ abstract contract MoneyPoolOwner is Ownable {
         internal
         returns (uint256)
     {
-        return _fountain.sustain(address(this), _amount, _sustainer);
+        return _fountain.sustainOwner(address(this), _amount, _sustainer);
     }
 }

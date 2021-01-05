@@ -90,36 +90,6 @@ contract Fountain is IFountain {
 
     // --- events --- //
 
-    /// @notice This event should trigger when a Money pool is configured.
-    event ConfigureMp(
-        uint256 indexed mpNumber,
-        address indexed owner,
-        uint256 indexed target,
-        uint256 duration,
-        IERC20 want
-    );
-
-    /// @notice This event should trigger when a Money pool is sustained.
-    event SustainMp(
-        uint256 indexed mpNumber,
-        address indexed owner,
-        address indexed beneficiary,
-        address sustainer,
-        uint256 amount
-    );
-
-    /// @notice This event should trigger when redistributions are collected.
-    event CollectRedistributions(address indexed sustainer, uint256 amount);
-
-    /// @notice This event should trigger when sustainments are collected.
-    event TapSustainments(
-        uint256 indexed mpNumber,
-        address indexed owner,
-        address indexed beneficiary,
-        uint256 amount,
-        IERC20 want
-    );
-
     // --- external views --- //
 
     /**  
