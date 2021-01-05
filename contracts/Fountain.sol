@@ -193,7 +193,7 @@ contract Fountain is IFountain {
             _mp.target,
             _mp._determineNextStart(),
             _mp.duration,
-            _mp.total
+            0
         );
     }
 
