@@ -175,7 +175,7 @@ library MoneyPool {
         @notice Returns the date that is the nearest multiple of duration from oldEnd.
         @return start The date.
     */
-    function _determineNextStart(Data storage self)
+    function _determineNextStart(Data memory self)
         internal
         view
         returns (uint256)
@@ -212,6 +212,7 @@ library MoneyPool {
         @notice The properties of the given Money pool.
         @param self The Money pool to get the properties of.
         @return number The number of the Money pool.
+        @return owner The owner of the Money pool.
         @return want The token the Money pool wants.
         @return target The amount of the want token this Money pool is targeting.
         @return start The time when this Money pool started.
@@ -223,6 +224,7 @@ library MoneyPool {
         pure
         returns (
             uint256,
+            address,
             IERC20,
             uint256,
             uint256,
@@ -232,6 +234,7 @@ library MoneyPool {
     {
         return (
             self.number,
+            self.owner,
             self.want,
             self.target,
             self.start,
