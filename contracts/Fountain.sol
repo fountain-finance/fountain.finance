@@ -217,7 +217,7 @@ contract Fountain is IFountain {
 
         _mp = mps[latestMpNumber[_owner]];
         return (
-            _mp.number,
+            mpCount + 1,
             _mp.owner,
             _mp.want,
             _mp.target,
