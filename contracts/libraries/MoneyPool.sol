@@ -196,7 +196,7 @@ library MoneyPool {
         @return hasStarted The boolean result.
     */
     function _hasStarted(Data memory self) private view returns (bool) {
-        return now >= self.start;
+        return now >= self.start && self.total > 0;
     }
 
     /** 
