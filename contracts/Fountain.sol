@@ -133,7 +133,7 @@ contract Fountain is IFountain {
         @return duration The duration of this Money pool measured in seconds.
         @return total The total amount passed through the Money pool. Returns 0 if the Money pool isn't owned by the message sender.
     */
-    function getUpcomingMp(address _owner)
+    function getQueuedMp(address _owner)
         external
         view
         override
@@ -148,7 +148,10 @@ contract Fountain is IFountain {
         )
     {
         MoneyPool.Data memory _mp = _upcomingMp(_owner);
-        require(_mp.number > 0, "Fountain::getUpcomingMp: NOT_FOUND");
+        require(
+            _mp.number > 0 && _activeMp(_owner).number > 0,
+            "Fountain::getUpcomingMp: NOT_FOUND"
+        );
         return _mp._properties();
     }
 
@@ -273,7 +276,13 @@ contract Fountain is IFountain {
         require(_target > 0, "Fountain::configureMp: BAD_TARGET");
 
         MoneyPool.Data storage _mp = _mpToConfigure(msg.sender);
-        _mp._configure(_target, _duration, _want);
+        // Reset the start time to now if there isn't an active Money pool.
+        _mp._configure(
+            _target,
+            _duration,
+            _want,
+            _activeMp(msg.sender).number == 0 ? block.timestamp : _mp.start
+        );
 
         emit ConfigureMp(
             _mp.number,
@@ -303,6 +312,7 @@ contract Fountain is IFountain {
 
         // Find the Money pool that this sustainment should go to.
         MoneyPool.Data storage _mp = _mpToSustain(_owner);
+
         _mp._sustain(_amount, _beneficiary);
 
         _mp.want.safeTransferFrom(msg.sender, address(this), _amount);
@@ -437,10 +447,6 @@ contract Fountain is IFountain {
         private
         returns (MoneyPool.Data storage _mp)
     {
-        // Allow active moneyPool to be updated if it has no sustainments
-        _mp = _activeMp(_owner);
-        if (_mp.number > 0 && _mp.total == 0) return _mp;
-
         // Cannot update active moneyPool, check if there is a upcoming moneyPool
         _mp = _upcomingMp(_owner);
         if (_mp.number > 0) return _mp;
@@ -448,8 +454,17 @@ contract Fountain is IFountain {
         // No upcoming moneyPool found, clone the latest moneyPool
         _mp = mps[latestMpNumber[_owner]];
 
-        MoneyPool.Data storage _newMp = _initMp(_owner, now);
+        // If there's an active Money pool, its end time should correspond to the start time of the new Money pool.
+        MoneyPool.Data memory _ownersActiveMp = _activeMp(_owner);
+        MoneyPool.Data storage _newMp =
+            _initMp(
+                _owner,
+                _ownersActiveMp.number > 0
+                    ? _ownersActiveMp.start + _ownersActiveMp.duration
+                    : block.timestamp
+            );
         if (_mp.number > 0) _newMp._clone(_mp);
+
         return _newMp;
     }
 

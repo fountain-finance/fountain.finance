@@ -36,6 +36,8 @@ library MoneyPool {
         mapping(address => bool) hasRedistributed;
         // The amount each address has contributed to sustaining this Money pool.
         mapping(address => uint256) sustainments;
+        // The timestamp when the Money pool was last configured.
+        uint256 lastConfigured;
     }
 
     // --- internal transactions --- //
@@ -67,16 +69,19 @@ library MoneyPool {
         @param _target The sustainability target to set.
         @param _duration The duration to set, measured in seconds.
         @param _want The token that the Money pool wants.
+        @param _start The new start time.
     */
     function _configure(
         Data storage self,
         uint256 _target,
         uint256 _duration,
-        IERC20 _want
+        IERC20 _want,
+        uint256 _start
     ) internal {
         self.target = _target;
         self.duration = _duration;
         self.want = _want;
+        self.lastConfigured = block.timestamp;
     }
 
     /** 
@@ -182,10 +187,11 @@ library MoneyPool {
     {
         uint256 _end = self.start.add(self.duration);
         // Use the old end if the current time is still within the duration.
-        if (_end.add(self.duration) > now) return _end;
+        if (_end.add(self.duration) > block.timestamp) return _end;
         // Otherwise, use the closest multiple of the duration from the old end.
-        uint256 _distanceToStart = (now.sub(_end)).mod(self.duration);
-        return now.sub(_distanceToStart);
+        uint256 _distanceToStart =
+            (block.timestamp.sub(_end)).mod(self.duration);
+        return block.timestamp.sub(_distanceToStart);
     }
 
     // --- private views --- //
@@ -196,7 +202,7 @@ library MoneyPool {
         @return hasStarted The boolean result.
     */
     function _hasStarted(Data memory self) private view returns (bool) {
-        return now >= self.start && self.total > 0;
+        return block.timestamp >= self.start && self.total > 0;
     }
 
     /** 
@@ -205,7 +211,7 @@ library MoneyPool {
         @return hasExpired The boolean result.
     */
     function _hasExpired(Data memory self) private view returns (bool) {
-        return now > self.start.add(self.duration);
+        return block.timestamp > self.start.add(self.duration);
     }
 
     /** 

@@ -56,7 +56,7 @@ interface IFountain {
             uint256
         );
 
-    function getUpcomingMp(address _owner)
+    function getQueuedMp(address _owner)
         external
         view
         returns (
