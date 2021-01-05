@@ -35,7 +35,7 @@ interface IFountain {
     event CollectRedistributions(address indexed sustainer, uint256 amount);
 
     /// @notice This event should trigger when sustainments are collected.
-    event TapSustainments(
+    event TapMp(
         uint256 indexed mpNumber,
         address indexed owner,
         address indexed beneficiary,
@@ -109,17 +109,17 @@ interface IFountain {
         address _beneficiary
     ) external returns (uint256 _mpNumber);
 
-    function collectAll() external returns (uint256 _amount);
+    function collectAllRedistributions() external returns (uint256 _amount);
 
-    function collectFromOwner(address _owner)
+    function collectRedistributionsFromOwner(address _owner)
         external
         returns (uint256 _amount);
 
-    function collectFromOwners(address[] calldata _owner)
+    function collectRedistributionsFromOwners(address[] calldata _owner)
         external
         returns (uint256 _amount);
 
-    function tap(
+    function tapMp(
         uint256 _mpNumber,
         uint256 _amount,
         address _beneficiary

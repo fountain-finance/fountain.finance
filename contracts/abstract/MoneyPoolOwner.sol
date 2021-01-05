@@ -37,7 +37,7 @@ abstract contract MoneyPoolOwner is Ownable {
         onlyOwner
         returns (bool)
     {
-        _fountain.tap(_mpNumber, _amount, msg.sender);
+        _fountain.tapMp(_mpNumber, _amount, msg.sender);
     }
 
     /** 

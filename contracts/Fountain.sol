@@ -44,19 +44,19 @@ contract Fountain is IFountain {
     uint8 private lock2 = 1;
     uint8 private lock3 = 1;
     modifier lockSustain() {
-        require(lock1 == 1, "Fountain: LOCKED");
+        require(lock1 == 1, "Fountain::sustainOwner LOCKED");
         lock1 = 0;
         _;
         lock1 = 1;
     }
     modifier lockCollect() {
-        require(lock2 == 1, "Fountain: LOCKED");
+        require(lock2 == 1, "Fountain::collectRedistributions: LOCKED");
         lock2 = 0;
         _;
         lock2 = 1;
     }
     modifier lockTap() {
-        require(lock3 == 1, "Fountain: LOCKED");
+        require(lock3 == 1, "Fountain:: tapSustainments LOCKED");
         lock3 = 0;
         _;
         lock3 = 1;
@@ -328,7 +328,7 @@ contract Fountain is IFountain {
         @notice A message sender can collect what's been redistributed to it by Money pools once they have expired.
         @return _amount If amount collected.
     */
-    function collectAll()
+    function collectAllRedistributions()
         external
         override
         lockCollect
@@ -341,7 +341,7 @@ contract Fountain is IFountain {
         // Iterate over all of sender's sustained addresses to make sure
         // redistribution has completed for all redistributable Money pools
         _amount = _redistributeAmount(msg.sender, sustainedOwners[msg.sender]);
-        _performCollect(msg.sender, _amount);
+        _performCollectRedistributions(msg.sender, _amount);
     }
 
     /**
@@ -349,7 +349,7 @@ contract Fountain is IFountain {
         @param _owner The Money pool owner to collect from.
         @return _amount The amount collected.
      */
-    function collectFromOwner(address _owner)
+    function collectRedistributionsFromOwner(address _owner)
         external
         override
         lockCollect
@@ -361,7 +361,7 @@ contract Fountain is IFountain {
         );
         // Iterate over all of sender's sustained addresses to make sure
         _amount = _redistributeAmount(msg.sender, _owner);
-        _performCollect(msg.sender, _amount);
+        _performCollectRedistributions(msg.sender, _amount);
     }
 
     /** 
@@ -369,7 +369,7 @@ contract Fountain is IFountain {
         @param _owners The Money pools owners to collect from.
         @return _amount If the amount collected.
     */
-    function collectFromOwners(address[] calldata _owners)
+    function collectRedistributionsFromOwners(address[] calldata _owners)
         external
         override
         lockCollect
@@ -380,7 +380,7 @@ contract Fountain is IFountain {
             "Fountain::collectFromOwners: NOTHING_TO_COLLECT"
         );
         _amount = _redistributeAmount(msg.sender, _owners);
-        _performCollect(msg.sender, _amount);
+        _performCollectRedistributions(msg.sender, _amount);
     }
 
     /**
@@ -390,7 +390,7 @@ contract Fountain is IFountain {
         @param _beneficiary The address to transfer the funds to.
         @return success If the collecting was a success.
     */
-    function tap(
+    function tapMp(
         uint256 _mpNumber,
         uint256 _amount,
         address _beneficiary
@@ -408,13 +408,7 @@ contract Fountain is IFountain {
         _mp._tap(_amount);
         _mp.want.safeTransfer(_beneficiary, _amount);
 
-        emit TapSustainments(
-            _mpNumber,
-            msg.sender,
-            _beneficiary,
-            _amount,
-            _mp.want
-        );
+        emit TapMp(_mpNumber, msg.sender, _beneficiary, _amount, _mp.want);
 
         return true;
     }
@@ -426,7 +420,9 @@ contract Fountain is IFountain {
         @param _sustainer The sustainer address to redistribute to.
         @param _amount The amount to collect.
     */
-    function _performCollect(address _sustainer, uint256 _amount) private {
+    function _performCollectRedistributions(address _sustainer, uint256 _amount)
+        private
+    {
         dai.safeTransfer(_sustainer, _amount);
         emit CollectRedistributions(_sustainer, _amount);
     }
