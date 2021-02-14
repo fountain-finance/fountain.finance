@@ -3,7 +3,7 @@ pragma solidity >=0.6.0 <0.8.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "./interfaces/IFountain.sol";
+import "./../interfaces/IFountain.sol";
 
 abstract contract MoneyPoolOwner is Ownable {
     using SafeERC20 for IERC20;
@@ -37,7 +37,7 @@ abstract contract MoneyPoolOwner is Ownable {
         onlyOwner
         returns (bool)
     {
-        _fountain.tap(_mpNumber, _amount, msg.sender);
+        _fountain.tapMp(_mpNumber, _amount, msg.sender);
     }
 
     /** 
@@ -94,6 +94,6 @@ abstract contract MoneyPoolOwner is Ownable {
         internal
         returns (uint256)
     {
-        return _fountain.sustain(address(this), _amount, _sustainer);
+        return _fountain.sustainOwner(address(this), _amount, _sustainer);
     }
 }

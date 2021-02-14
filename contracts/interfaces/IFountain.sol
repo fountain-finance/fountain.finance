@@ -4,75 +4,82 @@ pragma solidity >=0.6.0 <0.8.0;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 interface IFountain {
-    function previousMpNumber(uint256 _mpId)
+    function previousMpNumber(uint256 _mpNumber)
         external
         view
-        returns (uint256 _mpNumber);
+        returns (uint256);
 
-    function latestMpNumber(address _owner)
-        external
-        view
-        returns (uint256 _mpNumber);
+    function latestMpNumber(address _owner) external view returns (uint256);
 
-    function mpCount() external view returns (uint256 _count);
+    function mpCount() external view returns (uint256);
 
+    /// @notice This event should trigger when a Money pool is configured.
     event ConfigureMp(
-        uint256 indexed mpId,
+        uint256 indexed mpNumber,
         address indexed owner,
         uint256 indexed target,
         uint256 duration,
         IERC20 want
     );
+
+    /// @notice This event should trigger when a Money pool is sustained.
     event SustainMp(
-        uint256 indexed mpId,
+        uint256 indexed mpNumber,
         address indexed owner,
         address indexed beneficiary,
         address sustainer,
         uint256 amount
     );
-    event Collect(address indexed sustainer, uint256 amount);
-    event Tap(
-        uint256 indexed mpId,
+
+    /// @notice This event should trigger when redistributions are collected.
+    event CollectRedistributions(address indexed sustainer, uint256 amount);
+
+    /// @notice This event should trigger when sustainments are collected.
+    event TapMp(
+        uint256 indexed mpNumber,
         address indexed owner,
         address indexed beneficiary,
         uint256 amount,
-        address want
+        IERC20 want
     );
 
-    function getMp(uint256 _mpId)
+    function getMp(uint256 _mpNumber)
         external
         view
         returns (
-            uint256 _number,
-            IERC20 _want,
-            uint256 _target,
-            uint256 _start,
-            uint256 _duration,
-            uint256 _balance
+            uint256,
+            address,
+            IERC20,
+            uint256,
+            uint256,
+            uint256,
+            uint256
         );
 
-    function getUpcomingMp(address _owner)
+    function getQueuedMp(address _owner)
         external
         view
         returns (
-            uint256 _number,
-            IERC20 _want,
-            uint256 _target,
-            uint256 _start,
-            uint256 _duration,
-            uint256 _balance
+            uint256,
+            address,
+            IERC20,
+            uint256,
+            uint256,
+            uint256,
+            uint256
         );
 
-    function getActiveMp(address _owner)
+    function getCurrentMp(address _owner)
         external
         view
         returns (
-            uint256 _number,
-            IERC20 _want,
-            uint256 _target,
-            uint256 _start,
-            uint256 _duration,
-            uint256 _balance
+            uint256,
+            address,
+            IERC20,
+            uint256,
+            uint256,
+            uint256,
+            uint256
         );
 
     function getSustainment(uint256 _mpNumber, address _sustainer)
@@ -96,24 +103,24 @@ interface IFountain {
         IERC20 _want
     ) external returns (uint256 _mpNumber);
 
-    function sustain(
+    function sustainOwner(
         address _owner,
         uint256 _amount,
         address _beneficiary
     ) external returns (uint256 _mpNumber);
 
-    function collectAll() external returns (uint256 _amount);
+    function collectAllRedistributions() external returns (uint256 _amount);
 
-    function collectFromOwner(address _owner)
+    function collectRedistributionsFromOwner(address _owner)
         external
         returns (uint256 _amount);
 
-    function collectFromOwners(address[] calldata _owner)
+    function collectRedistributionsFromOwners(address[] calldata _owner)
         external
         returns (uint256 _amount);
 
-    function tap(
-        uint256 _mpId,
+    function tapMp(
+        uint256 _mpNumber,
         uint256 _amount,
         address _beneficiary
     ) external returns (bool _success);

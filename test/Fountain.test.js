@@ -210,7 +210,7 @@ contract("Fountain", ([owner, creator, sustainer, beneficiary]) => {
 
     scenarios.forEach((scenario) => {
       it(`sustains existing money pool when ${scenario.description}`, async () => {
-        const result = await fountain.sustain(creator, scenario.amount, scenario.beneficiary, {
+        const result = await fountain.sustainOwner(creator, scenario.amount, scenario.beneficiary, {
           // Using address that did not create the MoneyPool
           from: sustainer,
         });
@@ -256,7 +256,7 @@ contract("Fountain", ([owner, creator, sustainer, beneficiary]) => {
       const amount = 0;
       await truffleAssert.fails(
         // Using "creator" address which has a moneyPool
-        fountain.sustain(creator, amount, sustainer, {
+        fountain.sustainOwner(creator, amount, sustainer, {
           // Using address that did not create the MoneyPool
           from: sustainer,
         }),
@@ -268,7 +268,7 @@ contract("Fountain", ([owner, creator, sustainer, beneficiary]) => {
       const amount = 10;
       await truffleAssert.fails(
         // Using "owner" address which does not have a moneyPool
-        fountain.sustain(owner, amount, sustainer, {
+        fountain.sustainOwner(owner, amount, sustainer, {
           // Using address that did not create the MoneyPool
           from: sustainer,
         }),

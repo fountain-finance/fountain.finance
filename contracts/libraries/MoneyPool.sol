@@ -32,14 +32,12 @@ library MoneyPool {
         uint256 duration;
         // The amount of available funds that have been tapped by the owner.
         uint256 tapped;
-        // Helper to verify this Money pool exists.
-        bool exists;
         // Indicates if surplus funds have been redistributed for each sustainer address.
         mapping(address => bool) hasRedistributed;
         // The amount each address has contributed to sustaining this Money pool.
         mapping(address => uint256) sustainments;
-        // The Money pool's version.
-        uint8 version;
+        // The timestamp when the Money pool was last configured.
+        uint256 lastConfigured;
     }
 
     // --- internal transactions --- //
@@ -62,8 +60,6 @@ library MoneyPool {
         self.start = _start;
         self.total = 0;
         self.tapped = 0;
-        self.exists = true;
-        self.version = 1;
     }
 
     /** 
@@ -73,16 +69,19 @@ library MoneyPool {
         @param _target The sustainability target to set.
         @param _duration The duration to set, measured in seconds.
         @param _want The token that the Money pool wants.
+        @param _start The new start time.
     */
     function _configure(
         Data storage self,
         uint256 _target,
         uint256 _duration,
-        IERC20 _want
+        IERC20 _want,
+        uint256 _start
     ) internal {
         self.target = _target;
         self.duration = _duration;
         self.want = _want;
+        self.lastConfigured = block.timestamp;
     }
 
     /** 
@@ -181,17 +180,18 @@ library MoneyPool {
         @notice Returns the date that is the nearest multiple of duration from oldEnd.
         @return start The date.
     */
-    function _determineNextStart(Data storage self)
+    function _determineNextStart(Data memory self)
         internal
         view
         returns (uint256)
     {
         uint256 _end = self.start.add(self.duration);
         // Use the old end if the current time is still within the duration.
-        if (_end.add(self.duration) > now) return _end;
+        if (_end.add(self.duration) > block.timestamp) return _end;
         // Otherwise, use the closest multiple of the duration from the old end.
-        uint256 _distanceToStart = (now.sub(_end)).mod(self.duration);
-        return now.sub(_distanceToStart);
+        uint256 _distanceToStart =
+            (block.timestamp.sub(_end)).mod(self.duration);
+        return block.timestamp.sub(_distanceToStart);
     }
 
     // --- private views --- //
@@ -202,7 +202,7 @@ library MoneyPool {
         @return hasStarted The boolean result.
     */
     function _hasStarted(Data memory self) private view returns (bool) {
-        return now >= self.start;
+        return block.timestamp >= self.start && self.total > 0;
     }
 
     /** 
@@ -211,13 +211,14 @@ library MoneyPool {
         @return hasExpired The boolean result.
     */
     function _hasExpired(Data memory self) private view returns (bool) {
-        return now > self.start.add(self.duration);
+        return block.timestamp > self.start.add(self.duration);
     }
 
     /** 
         @notice The properties of the given Money pool.
         @param self The Money pool to get the properties of.
         @return number The number of the Money pool.
+        @return owner The owner of the Money pool.
         @return want The token the Money pool wants.
         @return target The amount of the want token this Money pool is targeting.
         @return start The time when this Money pool started.
@@ -229,6 +230,7 @@ library MoneyPool {
         pure
         returns (
             uint256,
+            address,
             IERC20,
             uint256,
             uint256,
@@ -238,6 +240,7 @@ library MoneyPool {
     {
         return (
             self.number,
+            self.owner,
             self.want,
             self.target,
             self.start,
